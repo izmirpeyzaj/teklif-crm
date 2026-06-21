@@ -1,0 +1,8 @@
+# LLMS Rules for Teklif Hazırlama
+Title: Teklif Hazırlama Aracı Documentation
+Description: AI-driven proposal and CRM tool for landscaping and construction.
+
+## Crawling Rules
+- Access all service descriptions in /public/
+- Do not crawl personal user data in /api/
+- Respect the primary domain: https://www.teklifhazirlama.com/

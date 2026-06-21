@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>crm.izmirev.online | Profesyonel Teklif Hazırlama</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for modern icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js for Dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="auth-modal hidden">
+        <div class="auth-modal-content">
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="tabLoginBtn" onclick="toggleAuthTab('login')">Giriş Yap</button>
+                <button class="auth-tab" id="tabRegisterBtn" onclick="toggleAuthTab('register')">Kayıt Ol</button>
+            </div>
+            <div id="authError" class="auth-error"></div>
+
+            <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label>E-posta</label>
+                    <input type="email" id="loginEmail" class="form-control" required placeholder="ornek@mail.com">
+                </div>
+                <div class="form-group">
+                    <label>Şifre</label>
+                    <input type="password" id="loginPassword" class="form-control" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Giriş Yap</button>
+            </form>
+
+            <form id="registerForm" class="auth-form hidden" onsubmit="handleRegister(event)">
+                <div class="form-group">
+                    <label>Şirket Adı</label>
+                    <input type="text" id="regCompany" class="form-control" required placeholder="Urla Peyzaj">
+                </div>
+                <div class="form-group">
+                    <label>E-posta</label>
+                    <input type="email" id="regEmail" class="form-control" required placeholder="iletisim@sirket.com">
+                </div>
+                <div class="form-group">
+                    <label>Şifre</label>
+                    <input type="password" id="regPassword" class="form-control" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Hesap Oluştur</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Kanban Card Editor Modal -->
+    <div id="cardModal" class="auth-modal hidden">
+        <div class="auth-modal-content" style="max-width: 650px; padding: 0; overflow: hidden; border-radius: 12px;">
+            <div
+                style="background: var(--primary); color: white; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center;">
+                <h2 id="cardModalTitle" style="margin:0; font-size:1.1rem; font-weight:700;">Proje Detayları</h2>
+                <button onclick="closeCardModal()"
+                    style="border:none; background:none; color:white; font-size:1.5rem; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+
+            <div style="padding: 24px; display: flex; gap: 24px;">
+                <!-- Left Column: Form Info -->
+                <div style="flex: 1.2; display: flex; flex-direction: column; gap: 20px;">
+                    <input type="hidden" id="editCardId">
+                    <input type="hidden" id="editListId">
+
+                    <div class="form-group" style="margin:0;">
+                        <label>Proje/İş Başlığı</label>
+                        <input type="text" id="editCardTitle" class="form-control">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Müşteri Adı</label>
+                        <input type="text" id="editCardCustomer" class="form-control" list="customerDatalist">
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Telefon</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="editCardPhone" class="form-control" style="flex:1;">
+                                <div id="phoneCommButtons" style="display:flex; gap:4px;">
+                                    <!-- Comm buttons injected here -->
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>E-posta</label>
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" id="editCardEmail" class="form-control" style="flex:1;">
+                                <div id="emailCommButtons" style="display:flex; gap:4px;">
+                                    <!-- Comm buttons injected here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="commButtons" style="display:flex; gap:12px; margin-top:8px;">
+                        <!-- Communication shortcuts like WhatsApp -->
+                    </div>
+
+                    <div style="margin-top:20px;">
+                        <h3
+                            style="font-size:0.9rem; margin-bottom:12px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                            Son Verilen Teklifler</h3>
+                        <div id="proposalHistory" style="display:flex; flex-direction:column; gap:8px;">
+                            <!-- History injected here -->
+                        </div>
+                    </div>
+
+                    <div style="margin-top:auto; padding-top:20px;">
+                        <button onclick="saveCardDetails()" class="btn btn-primary" style="width:100%">Değişiklikleri
+                            Kaydet</button>
+                    </div>
+                </div>
+
+                <!-- Right Column: Comments Timeline -->
+                <div
+                    style="flex: 1; display: flex; flex-direction: column; background: #f8fafc; border-left: 1px solid var(--border-light); padding: 24px; margin: -24px; margin-left: 0;">
+                    <h3
+                        style="font-size:0.9rem; margin-bottom:16px; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px;">
+                        Yorumlar / İş Geçmişi</h3>
+
+                    <div class="comment-input-area" style="margin-bottom:20px;">
+                        <textarea id="newCommentText" class="form-control" rows="2" placeholder="Not ekle..."
+                            style="font-size:0.85rem; margin-bottom:8px;"></textarea>
+                        <button onclick="addComment()" class="btn btn-sm btn-primary" style="width:100%">Yorum
+                            Ekle</button>
+                    </div>
+
+                    <div id="commentsContainer"
+                        style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding-right:4px;">
+                        <!-- Comments injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <div class="app-shell">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">
+                <i class="fa-solid fa-cloud-bolt" style="color:var(--accent); font-size:1.8rem;"></i>
+                <span>crm.izmirev.online</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" onclick="switchTab('dashboard')">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Genel Bakış</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('proposal')">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>Yeni Teklif</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('proposals')">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span>Tekliflerim</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('kanban')">
+                    <i class="fa-solid fa-chart-simple"></i>
+                    <span>CRM / Kanban</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('customers')">
+                    <i class="fa-solid fa-users"></i>
+                    <span>Müşteriler</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('services')">
+                    <i class="fa-solid fa-list-check"></i>
+                    <span>Hizmetler</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('products')">
+                    <i class="fa-solid fa-box"></i>
+                    <span>Ürünler</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('references')">
+                    <i class="fa-solid fa-images"></i>
+                    <span>Referanslar</span>
+                </div>
+                <div class="nav-item" onclick="switchTab('settings')">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Ayarlar</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="buddy-card">
+                    <h4>Hey buddy,</h4>
+                    <p>Deneme sürenizin bitmesine <b>10 gün</b> kaldı.</p>
+                    <button class="btn btn-primary btn-sm" style="width:100%; height:32px; font-size:0.75rem;">Paketi
+                        Yükselt <i class="fa-solid fa-chevron-right" style="font-size:0.6rem;"></i></button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            <!-- TOP BAR -->
+            <header class="top-bar">
+                <div class="top-search" style="flex:1; max-width:400px; position:relative;">
+                    <i class="fa-solid fa-magnifying-glass"
+                        style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:0.9rem;"></i>
+                    <input type="text" class="form-control" placeholder="Ara..."
+                        style="padding-left:36px; height:40px; background:#f1f5f9; border:none;">
+                </div>
+                <div class="top-actions" style="display:flex; align-items:center; gap:20px;">
+                    <div style="display:flex; gap:16px; color:var(--text-muted); font-size:1.1rem;">
+                        <i class="fa-solid fa-share-nodes"></i>
+                        <i class="fa-regular fa-comment"></i>
+                        <div style="position:relative; cursor:pointer;" onclick="showNotifications()">
+                            <i class="fa-regular fa-bell"></i>
+                            <span id="notificationBadge"
+                                style="position:absolute; top:-2px; right:-2px; width:8px; height:8px; background:#ef4444; border-radius:50%; display:none;"></span>
+                        </div>
+                    </div>
+                    <div id="userProfile"
+                        style="display:flex; align-items:center; gap:10px; padding-left:20px; border-left:1px solid var(--border-light);">
+                        <div style="text-align:right;">
+                            <div id="userEmail" style="font-weight:700; font-size:0.9rem; color:var(--primary)">
+                                Kullanıcı</div>
+                            <div style="font-size:0.75rem; color:var(--text-muted)">Yönetici</div>
+                        </div>
+                        <div
+                            style="width:40px; height:40px; border-radius:10px; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-weight:700;">
+                            U
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- APP WRAPPER FOR SCREENS -->
+            <div class="app-container" style="flex:1; overflow:hidden; display:flex;">
+                <!-- LEFT PANEL: BUILDER -->
+                <aside class="builder-panel">
+
+                    <!-- DASHBOARD TAB -->
+                    <div class="builder-content" id="tab-dashboard" style="overflow-y: auto;">
+                        <div class="dashboard-container" style="padding: 20px;">
+                            <h2 style="margin-bottom:20px; color:var(--primary); font-size:1.5rem;">İşletme Özeti</h2>
+
+                            <!-- KPI Grid -->
+                            <div class="kpi-grid">
+                                <div class="kpi-card revenue">
+                                    <div class="kpi-icon"><i class="fa-solid fa-wallet"></i></div>
+                                    <div class="kpi-info">
+                                        <h4>Toplam Ciro</h4>
+                                        <span class="kpi-value" id="kpiRevenue">0.00 ₺</span>
+                                        <small>Kabul Edilen Teklifler</small>
+                                    </div>
+                                </div>
+
+                                <div class="kpi-card pending">
+                                    <div class="kpi-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+                                    <div class="kpi-info">
+                                        <h4>Bekleyen Tutar</h4>
+                                        <span class="kpi-value" id="kpiPending">0.00 ₺</span>
+                                        <small id="kpiPendingCount">0 teklif bekliyor</small>
+                                    </div>
+                                </div>
+
+                                <div class="kpi-card winrate">
+                                    <div class="kpi-icon"><i class="fa-solid fa-chart-pie"></i></div>
+                                    <div class="kpi-info">
+                                        <h4>Kazanma Oranı</h4>
+                                        <span class="kpi-value" id="kpiWinRate">%0</span>
+                                        <small>Kabul / Toplam</small>
+                                    </div>
+                                </div>
+
+                                <div class="kpi-card monthly">
+                                    <div class="kpi-icon"><i class="fa-solid fa-calendar-check"></i></div>
+                                    <div class="kpi-info">
+                                        <h4>Bu Ay</h4>
+                                        <span class="kpi-value" id="kpiMonthCount">0</span>
+                                        <small>Yeni Teklif</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Charts Section -->
+                            <div class="charts-grid">
+                                <div class="chart-card large">
+                                    <div class="chart-header">
+                                        <h3>Son 6 Ay Satış Trendi</h3>
+                                    </div>
+                                    <div class="chart-body">
+                                        <canvas id="revenueChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="chart-card small">
+                                    <div class="chart-header">
+                                        <h3>Teklif Durumları</h3>
+                                    </div>
+                                    <div class="chart-body">
+                                        <canvas id="statusChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="builder-content hidden" id="tab-proposal">
+                        <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                            <h2 style="font-size:1.1rem; color:var(--primary)">Teklif Formu</h2>
+                            <p style="font-size:0.8rem; color:var(--text-light)">Lütfen müşteri ve proje bilgilerini
+                                doldurun.
+                            </p>
+                        </div>
+                        <!-- Customer Info -->
+                        <div class="form-group" style="display:flex; gap:10px;">
+                            <div class="form-group">
+                                <label>Müşteri Adı / Firma</label>
+                                <input type="text" id="customerInput" class="form-control"
+                                    placeholder="Müşteri adını girin (Örn: Ahmet Yılmaz)" list="customerDatalist">
+                                <datalist id="customerDatalist"></datalist>
+                            </div>
+                            <div style="flex:1;">
+                                <label>Versiyon</label>
+                                <input type="number" id="versionInput" class="form-control" value="1" min="1">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Proje Adı / Lokasyon</label>
+                            <input type="text" id="projectNameInput" class="form-control"
+                                placeholder="Örn: Villa Bahçe Düzenleme">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Tarih</label>
+                            <input type="date" id="dateInput" class="form-control">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Teklif Geçerlilik Süresi</label>
+                            <div class="validity-btn-group" style="display:flex; gap:5px; margin-bottom:10px;">
+                                <button type="button" class="btn btn-secondary btn-sm validity-btn"
+                                    onclick="setValidity(7, this)">1 Hafta</button>
+                                <button type="button" class="btn btn-secondary btn-sm validity-btn"
+                                    onclick="setValidity(15, this)">15 Gün</button>
+                                <button type="button" class="btn btn-secondary btn-sm validity-btn"
+                                    onclick="setValidity(30, this)">1 Ay</button>
+                            </div>
+                            <div>
+                                <input type="date" id="validityDateInput" class="form-control"
+                                    onchange="handleCustomValidityDate()">
+                            </div>
+                        </div>
+
+                        <hr class="divider">
+
+                        <!-- Add Items (Redesigned) -->
+                        <div class="form-group service-selector-redesign">
+                            <label>Hizmet Seçin (En Son Kullanılan 20)</label>
+                            <div class="search-container" style="margin-bottom: 12px;">
+                                <input type="text" id="serviceSearchInput" class="form-control"
+                                    placeholder="Hizmetlerde ara..." oninput="handleServiceSearch()">
+                            </div>
+                            <div id="serviceChecklist" class="service-checklist-container">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Selected Items List -->
+                        <div class="cart-section" style="margin-top:20px;">
+                            <label>Eklenen Hizmetler</label>
+                            <div class="cart-items" id="cartItems">
+                                <!-- Cart items will appear here -->
+                                <p class="empty-msg">Henüz hizmet eklenmedi.</p>
+                            </div>
+                        </div>
+
+                        <hr class="divider">
+
+                        <!-- Product Selection -->
+                        <div class="form-group service-selector-redesign">
+                            <label>Ürün Seçin</label>
+                            <div class="search-container" style="margin-bottom: 12px;">
+                                <input type="text" id="productSearchInput" class="form-control"
+                                    placeholder="Ürünlerde ara..." oninput="handleProductSearch()">
+                            </div>
+                            <div id="productChecklist" class="service-checklist-container">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Selected Products List -->
+                        <div class="cart-section" style="margin-top:20px;">
+                            <label>Eklenen Ürünler</label>
+                            <div class="cart-items" id="productCartItems">
+                                <!-- Product cart items will appear here -->
+                                <p class="empty-msg">Henüz ürün eklenmedi.</p>
+                            </div>
+                        </div>
+
+                        <!-- Action Controls inside Proposal Tab -->
+                        <div style="margin-top:20px; text-align:right;">
+                            <label style="font-size:0.9rem; cursor:pointer;">
+                                <input type="checkbox" id="taxToggle" checked> KDV Hesapla
+                            </label>
+                        </div>
+                        <button onclick="window.print()" class="btn btn-print">🖨️ PDF / Yazdır</button>
+                        <button onclick="downloadProposalPdf(this)" class="btn btn-print"
+                            style="width:100%; margin-top:10px; background:#2563eb; color:white; border:none;">📄 PDF
+                            İndir</button>
+                        <button onclick="sendProposalPdf(this)" class="btn btn-print"
+                            style="width:100%; margin-top:10px; background:#16a34a; color:white; border:none;">📧
+                            Müşteriye PDF Gönder</button>
+                        <button onclick="saveCurrentProposal()" class="btn btn-secondary"
+                            style="width:100%; margin-top:10px; background:#2ecc71; color:white; border:none;">💾
+                            Teklifi
+                            Kaydet</button>
+
+                        <!-- Share Buttons -->
+                        <div style="display:flex; gap:10px; margin-top:10px;">
+                            <button onclick="shareProposalWhatsApp()" class="btn"
+                                style="flex:1; background:#25D366; color:white; border:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <i class="fa-brands fa-whatsapp"></i> WhatsApp
+                            </button>
+                            <button onclick="shareProposalEmail()" class="btn"
+                                style="flex:1; background:#3b82f6; color:white; border:none; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <i class="fa-solid fa-envelope"></i> E-posta
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- SAVED PROPOSALS TAB -->
+                    <div class="builder-content hidden" id="tab-proposals">
+                        <div class="management-container">
+                            <h3>Kayıtlı Teklifler</h3>
+                            <div class="search-container" style="margin-bottom: 15px;">
+                                <input type="text" id="proposalSearchInput" class="form-control"
+                                    placeholder="Teklif kodu veya müşteri ara..." oninput="handleProposalSearch()">
+                            </div>
+                            <div id="savedProposalsList" class="service-list">
+                                <!-- Populated by JS -->
+                                <p class="empty-msg">Kayıtlı teklif bulunamadı.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SERVICES TAB -->
+                    <div class="builder-content hidden" id="tab-services">
+                        <div class="management-container">
+                            <h3>Hizmet Yönetimi</h3>
+                            <p class="hint">Hizmetlerinizi buradan düzenleyebilir veya yeni ekleyebilirsiniz.</p>
+
+                            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                                <button class="btn btn-primary" style="flex:1; min-width:140px;"
+                                    onclick="showServiceForm()">+ Yeni Hizmet</button>
+                                <button class="btn btn-secondary"
+                                    style="flex:1; min-width:140px; background:#e67e22; color:white; border:none;"
+                                    onclick="openSectorModal()">🏢 Sektörel Paket</button>
+                                <label class="btn"
+                                    style="flex:1; min-width:140px; background:#8e44ad; color:white; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center; margin-bottom:0;">
+                                    📥 Excel'den Yükle
+                                    <input type="file" accept=".xlsx,.xls,.csv" style="display:none;"
+                                        onchange="importServicesFromExcel(this)">
+                                </label>
+                                <button class="btn btn-secondary"
+                                    style="flex:1; min-width:140px; background:#c0392b; color:white; border:none; display:flex; align-items:center; justify-content:center;"
+                                    onclick="clearAllServices()">🗑️ Hepsini Sil</button>
+                            </div>
+                            <div style="text-align:right; margin-top:-10px; margin-bottom:15px;">
+                                <a href="#" onclick="downloadSampleExcel(); return false;"
+                                    style="color:var(--primary); font-size:0.9rem; text-decoration:none; display:inline-flex; align-items:center; gap:5px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                    Örnek Excel Şablonu İndir
+                                </a>
+                            </div>
+
+                            <div id="serviceList" class="service-list">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <div id="serviceForm" class="service-form hidden"
+                                style="border:1px solid var(--secondary); padding:15px; background:#f0fff4; margin-bottom:20px; border-radius:6px;">
+                                <h4 id="srvFormTitle">Hizmet Düzenle</h4>
+                                <input type="hidden" id="srvId">
+                                <div class="form-group">
+                                    <label>Hizmet Adı</label>
+                                    <input type="text" id="srvName" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Açıklama</label>
+                                    <textarea id="srvDesc" class="form-control" rows="2"></textarea>
+                                </div>
+                                <div class="form-group" style="display:flex; gap:10px;">
+                                    <div class="form-group">
+                                        <label>Birim Fiyat (₺)</label>
+                                        <input type="number" id="srvPrice" class="form-control" placeholder="0.00"
+                                            step="0.01">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Birim</label>
+                                        <input type="text" id="srvUnit" class="form-control" placeholder="m², Adet...">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Hizmete Özel Notlar</label>
+                                    <textarea id="srvCond" class="form-control" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label>Görsel
+                                        <button type="button" id="aiImageBtn" class="ai-btn"
+                                            style="margin-left:10px; font-size:0.75rem; padding:3px 10px;"
+                                            onclick="generateAIImage()">
+                                            <i class="fa-solid fa-wand-magic-sparkles"></i> YZ ile Resim
+                                        </button>
+                                    </label>
+                                    <input type="file" id="srvImage" class="form-control" accept="image/*">
+                                    <div id="srvImgPreview" style="margin-top:5px; max-height:150px; overflow:hidden;">
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn btn-primary" style="flex:1"
+                                        onclick="saveService()">Kaydet</button>
+                                    <button class="btn" style="flex:1; background:#95a5a6; color:white;"
+                                        onclick="hideServiceForm()">İptal</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PRODUCTS TAB -->
+                    <div class="builder-content hidden" id="tab-products">
+                        <div class="management-container">
+                            <h3>Ürün Yönetimi</h3>
+                            <p class="hint">Ürünlerinizi buradan düzenleyebilir veya yeni ekleyebilirsiniz.</p>
+
+                            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                                <button class="btn btn-primary" style="flex:1;" onclick="showProductForm()">+ Yeni Ürün
+                                    Ekle</button>
+                                <label class="btn"
+                                    style="flex:1; background:#3498db; color:white; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center;">
+                                    📥 Excel'den Aktar
+                                    <input type="file" accept=".xlsx,.xls,.csv" style="display:none;"
+                                        onchange="importProductsFromExcel(this)">
+                                </label>
+                            </div>
+
+                            <div id="productList" class="service-list">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <div id="productForm" class="service-form hidden"
+                                style="border:1px solid var(--secondary); padding:15px; background:#fff8e1; margin-bottom:20px; border-radius:6px;">
+                                <h4 id="prodFormTitle">Ürün Düzenle</h4>
+                                <input type="hidden" id="prodId">
+                                <div class="form-group">
+                                    <label>Ürün Adı</label>
+                                    <input type="text" id="prodName" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Açıklama</label>
+                                    <textarea id="prodDesc" class="form-control" rows="2"></textarea>
+                                </div>
+                                <div class="form-group" style="display:flex; gap:10px;">
+                                    <div class="form-group">
+                                        <label>Birim Fiyat (₺)</label>
+                                        <input type="number" id="prodPrice" class="form-control" placeholder="0.00"
+                                            step="0.01">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Birim</label>
+                                        <input type="text" id="prodUnit" class="form-control"
+                                            placeholder="adet, kg, m²..." value="adet">
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn btn-primary" style="flex:1"
+                                        onclick="saveProduct()">Kaydet</button>
+                                    <button class="btn" style="flex:1; background:#95a5a6; color:white;"
+                                        onclick="hideProductForm()">İptal</button>
+                                </div>
+                            </div>
+
+                            <div
+                                style="margin-top:20px; padding:15px; background:#f8f9fa; border-radius:6px; font-size:0.85rem;">
+                                <strong>📋 Excel Format:</strong> Sütunlar: &quot;Ürün Adı&quot;, &quot;Fiyat&quot;,
+                                &quot;Birim&quot;, &quot;Açıklama&quot;
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Customer Management Tab -->
+                    <div class="builder-content hidden" id="tab-customers">
+                        <div class="management-container">
+                            <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                                <h2 style="font-size:1.5rem; color:var(--primary)">Müşteri Yönetimi</h2>
+                                <p style="font-size:0.9rem; color:var(--text-light)">Müşteri bilgilerini ve takibini
+                                    buradan
+                                    yönetin.</p>
+                            </div>
+                            <button class="btn btn-primary" style="width:100%; margin-bottom:15px;"
+                                onclick="showCustomerForm()">+ Yeni Müşteri Ekle</button>
+
+                            <div id="customerForm" class="hidden"
+                                style="border:1px solid #eee; padding:15px; background:#f9f9f9; border-radius:8px; margin-bottom:20px;">
+                                <h3 id="custFormTitle">Müşteri Bilgileri</h3>
+                                <input type="hidden" id="custId">
+                                <div class="form-group">
+                                    <label>Ad Soyad / Firma</label>
+                                    <input type="text" id="custName" class="form-control">
+                                </div>
+                                <div class="form-group" style="display:flex; gap:10px;">
+                                    <div style="flex:1">
+                                        <label>Telefon</label>
+                                        <input type="text" id="custPhone" class="form-control"
+                                            placeholder="05XX XXX XX XX">
+                                    </div>
+                                    <div style="flex:1">
+                                        <label>E-posta</label>
+                                        <input type="email" id="custEmail" class="form-control"
+                                            placeholder="ornek@mail.com">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Adres</label>
+                                    <textarea id="custAddress" class="form-control" rows="2"></textarea>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn btn-primary" style="flex:1"
+                                        onclick="saveCustomer()">Kaydet</button>
+                                    <button class="btn" style="flex:1; background:#95a5a6; color:white;"
+                                        onclick="hideCustomerForm()">İptal</button>
+                                </div>
+                            </div>
+
+                            <div id="customerList" class="service-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- Kanban Project Board Tab -->
+                    <div class="builder-content hidden" id="tab-kanban">
+                        <div
+                            style="padding: 16px 32px 0 32px; display: flex; justify-content: space-between; align-items: center;">
+                            <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">Projeler (CRM)</h2>
+                            <button class="btn btn-primary" onclick="addNewKanbanList()"><i
+                                    class="fa-solid fa-plus"></i> Yeni Liste Ekle</button>
+                        </div>
+                        <div id="kanbanBoard" class="kanban-container"></div>
+                    </div>
+
+                    <!-- Reference Management Tab -->
+                    <div class="builder-content hidden" id="tab-references">
+                        <div class="management-container">
+                            <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                                <h2 style="font-size:1.5rem; color:var(--primary)">Referans Yönetimi</h2>
+                                <p style="font-size:0.9rem; color:var(--text-light)">Tekliflerinize eklenecek referans
+                                    projeleri
+                                    buradan yönetin.</p>
+                            </div>
+                            <button class="btn btn-primary" style="width:100%; margin-bottom:15px;"
+                                onclick="showRefForm()">+
+                                Yeni Referans Ekle</button>
+                            <div id="refList" class="service-list"></div>
+                            <div id="refForm" class="hidden"
+                                style="border:1px solid #eee; padding:15px; background:#f9f9f9; border-radius:8px;">
+                                <h3 id="refFormTitle">Referans Ekle</h3>
+                                <input type="hidden" id="refId">
+                                <div class="form-group">
+                                    <label>Başlık</label>
+                                    <input type="text" id="refTitle" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Kategori</label>
+                                    <input type="text" id="refCat" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>İlgili Hizmetler</label>
+                                    <div id="refTags"
+                                        style="max-height:150px; overflow-y:auto; background:white; border:1px solid #ddd; padding:5px;">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Görsel</label>
+                                    <input type="file" id="refImage" accept="image/*" class="form-control">
+                                    <div id="refImgPreview"></div>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn btn-primary" style="flex:1"
+                                        onclick="saveReference()">Kaydet</button>
+                                    <button class="btn" onclick="hideRefForm()">İptal</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PRODUCTS TAB -->
+                    <div class="builder-content hidden" id="tab-products">
+                        <div class="management-container">
+                            <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
+                                <h2 style="font-size:1.5rem; color:var(--primary)">Ürün Yönetimi</h2>
+                                <p style="font-size:0.9rem; color:var(--text-light)">Ürünlerinizi buradan yönetin veya
+                                    Excel ile toplu ekleyin.</p>
+                            </div>
+
+                            <div style="display:flex; gap:10px; margin-bottom:15px;">
+                                <button class="btn btn-primary" style="flex:1;" onclick="showProductForm()">+ Yeni Ürün
+                                    Ekle</button>
+                                <label class="btn btn-secondary"
+                                    style="flex:1; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                    <i class="fa-solid fa-file-excel"></i> Excel İçe Aktar
+                                    <input type="file" accept=".xlsx,.xls,.csv" style="display:none;"
+                                        onchange="importProductsFromExcel(this)">
+                                </label>
+                            </div>
+
+                            <div id="productForm" class="hidden"
+                                style="border:1px solid #eee; padding:15px; background:#f0f8ff; border-radius:8px; margin-bottom:20px;">
+                                <h4 id="prodFormTitle">Ürün Ekle</h4>
+                                <input type="hidden" id="prodId">
+                                <div class="form-group">
+                                    <label>Ürün Adı</label>
+                                    <input type="text" id="prodName" class="form-control"
+                                        placeholder="Örn: Çim Tohumu Premium">
+                                </div>
+                                <div class="form-group">
+                                    <label>Açıklama</label>
+                                    <textarea id="prodDesc" class="form-control" rows="2"
+                                        placeholder="Ürün açıklaması..."></textarea>
+                                </div>
+                                <div class="form-group" style="display:flex; gap:10px;">
+                                    <div style="flex:1;">
+                                        <label>Birim Fiyat (₺)</label>
+                                        <input type="number" id="prodPrice" class="form-control" placeholder="0.00"
+                                            step="0.01">
+                                    </div>
+                                    <div style="flex:1;">
+                                        <label>Birim</label>
+                                        <input type="text" id="prodUnit" class="form-control"
+                                            placeholder="kg, adet, m²...">
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    <button class="btn btn-primary" style="flex:1"
+                                        onclick="saveProduct()">Kaydet</button>
+                                    <button class="btn" style="flex:1; background:#95a5a6; color:white;"
+                                        onclick="hideProductForm()">İptal</button>
+                                </div>
+                            </div>
+
+                            <div id="productList" class="service-list">
+                                <!-- Populated by JS -->
+                            </div>
+
+                            <div
+                                style="margin-top:20px; padding:15px; background:#fffbeb; border:1px solid #fbbf24; border-radius:8px;">
+                                <h4 style="margin:0 0 10px 0; color:#d97706;"><i class="fa-solid fa-info-circle"></i>
+                                    Excel Formatı</h4>
+                                <p style="margin:0; font-size:0.85rem; color:#92400e;">Excel dosyanızda şu sütunlar
+                                    olmalı: <strong>Ürün Adı, Fiyat, Birim, Açıklama</strong></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="builder-content hidden" id="tab-settings">
+                        <div class="management-container">
+                            <h3>Firma Bilgileri</h3>
+                            <div class="form-group">
+                                <label>Firma Adı</label>
+                                <input type="text" id="setCompany" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Adres</label>
+                                <textarea id="setAddress" class="form-control" rows="2"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>Telefon</label>
+                                <input type="text" id="setPhone" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>E-posta</label>
+                                <input type="text" id="setEmail" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label>Firma Logosu</label>
+                                <div style="display:flex; gap:15px; align-items: flex-start;">
+                                    <div style="flex:1;">
+                                        <input type="file" id="setLogo" class="form-control" accept="image/*"
+                                            onchange="previewLogo(this)">
+                                        <p class="hint" style="margin-top:5px; margin-bottom:0;">Önerilen boyut:
+                                            240x120px</p>
+                                    </div>
+                                    <div id="setLogoPreview"
+                                        style="width:120px; height:80px; border:2px dashed var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; background:white;">
+                                        <span style="color:#ccc; font-size:0.7rem;">Önizleme</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Genel Notlar</label>
+                                <textarea id="setNotes" class="form-control" rows="4"></textarea>
+                            </div>
+                            <button class="btn btn-primary" onclick="saveCompanySettings()"
+                                style="width:100%">Kaydet</button>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Preview Panel -->
+                <main class="preview-panel">
+                    <div id="proposalPaper" class="proposal-paper">
+                        <!-- Header -->
+                        <header class="page-header">
+                            <div class="logo-area" id="companyLogo">LOGO</div>
+                            <div class="company-details" id="companyInfo"></div>
+                        </header>
+
+                        <hr style="border:0; border-top:2px solid #eee; margin:20px 0;">
+
+                        <!-- Client Info -->
+                        <div class="client-section">
+                            <div>
+                                <small style="color:#7f8c8d; text-transform:uppercase;">Sayın</small>
+                                <h2 id="propClientName">___________</h2>
+                                <div id="propProjectName" style="color:#7f8c8d; font-size:0.9rem; margin-top:-5px;">...
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="margin-bottom:10px;">
+                                    <small style="color:#7f8c8d; text-transform:uppercase;">Teklif No</small><br>
+                                    <span id="propFullCode"
+                                        style="font-weight:700; color:var(--primary); font-family: monospace;">---</span>
+                                </div>
+                                <div>
+                                    <small style="color:#7f8c8d;">Teklif Tarihi</small><br>
+                                    <span id="propDate" style="font-weight:600;">...</span>
+                                </div>
+                                <div style="margin-top:10px;">
+                                    <small style="color:#e74c3c;">Geçerlilik Tarihi</small><br>
+                                    <span id="propValidityDate" style="font-weight:600; color:#e74c3c;">...</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Job List -->
+                        <div class="job-list" id="propJobList"></div>
+
+                        <!-- Service Subtotal -->
+                        <div class="totals-section" style="margin-bottom:30px;">
+                            <div class="total-row">
+                                <span>Hizmet Toplamı</span>
+                                <span id="subTotal">0.00 ₺</span>
+                            </div>
+                        </div>
+
+                        <!-- Products Section -->
+                        <div id="productsSection" class="products-section" style="margin-top:30px;">
+                            <h3 style="color:var(--primary); margin-bottom:15px; font-size:1.1rem;">
+                                <i class="fa-solid fa-box" style="margin-right:8px;"></i>Ürünler
+                            </h3>
+                            <table class="product-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:5%">#</th>
+                                        <th style="width:25%">Ürün Adı</th>
+                                        <th style="width:30%">Açıklama</th>
+                                        <th style="width:10%">Birim</th>
+                                        <th style="width:8%">Miktar</th>
+                                        <th style="width:10%">Birim Fiyat</th>
+                                        <th style="width:12%">Toplam</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="propProductList">
+                                    <!-- Product rows populated by JS -->
+                                </tbody>
+                            </table>
+                            <div class="totals-section" style="margin-top:15px;">
+                                <div class="total-row"
+                                    style="display:flex; justify-content:flex-end; align-items:center; font-weight:600; gap:20px;">
+                                    <span>Ürün Toplamı</span>
+                                    <span id="productSubTotal">0.00 ₺</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Grand Total -->
+                        <div class="totals-section grand-total-section"
+                            style="margin-top:20px; background:linear-gradient(135deg, var(--primary), #2c3e50); border-radius:8px; padding:15px;">
+
+                            <!-- Discount Row (Hidden if no discount) -->
+                            <div class="total-row" id="discountRow"
+                                style="color:rgba(255,255,255,0.8); display:none; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                                <span style="font-size:0.9rem;">İndirim</span>
+                                <span id="discountAmountDisplay" style="font-size:0.9rem;">0.00 ₺</span>
+                            </div>
+
+                            <div class="total-row grand-total" style="color:white;">
+                                <span style="font-size:1.1rem;">GENEL TOPLAM</span>
+                                <span id="grandTotal" style="font-size:1.3rem; font-weight:800;">0.00 ₺</span>
+                            </div>
+                        </div>
+
+                        <!-- Service Specific Conditions -->
+                        <div id="propServiceConditions" style="margin-top:5px; display:none;">
+                            <h4 style="margin-bottom:2px; font-size:1rem;">Hizmete Özel Notlar</h4>
+                            <div id="serviceConditionsContent" style="font-style: italic;"></div>
+                        </div>
+
+                        <!-- Notes Display -->
+                        <div id="propNotes" style="margin-top:5px; white-space: pre-wrap;"></div>
+
+                        <!-- References Grid -->
+                        <div id="propReferences" style="margin-top:40px;">
+                            <h3>Referanslarımız</h3>
+                            <div class="reference-grid" id="refGrid"></div>
+                        </div>
+                    </div>
+
+
+            </div>
+        </main>
+    </div>
+    </div>
+    </div>
+
+    <!-- Sector Selection Modal -->
+    <div id="sectorModal" class="auth-modal hidden" style="z-index:9999;">
+        <div class="auth-modal-content" style="max-width: 450px;">
+            <h3 style="margin-bottom:10px; color:var(--primary);">Hızlı Başlangıç Paketleri</h3>
+            <p style="margin-bottom:20px; color:#666; font-size:0.9rem;">Sektörünüze uygun hazır hizmet listelerini tek
+                tıkla yükleyin.</p>
+
+            <div class="sector-buttons"
+                style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; max-height:450px; overflow-y:auto;">
+
+                <button class="btn btn-secondary" onclick="loadSectorPreset('peyzaj')"
+                    style="text-align:left; padding:15px;">🌳 Peyzaj & Bahçe</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('insaat')"
+                    style="text-align:left; padding:15px;">🏗️ İnşaat & Tadilat</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('web')"
+                    style="text-align:left; padding:15px;">💻 Web & Dijital</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('temizlik')"
+                    style="text-align:left; padding:15px;">🧹 Temizlik</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('nakliyat')"
+                    style="text-align:left; padding:15px;">🚚 Nakliyat</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('organizasyon')"
+                    style="text-align:left; padding:15px;">🎉 Organizasyon</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('elektrik')"
+                    style="text-align:left; padding:15px;">⚡ Elektrik & Teknoloji</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('tesisat')"
+                    style="text-align:left; padding:15px;">🔧 Tesisat</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('mimarlik')"
+                    style="text-align:left; padding:15px;">🏛️ İç Mimarlık</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('guvenlik')"
+                    style="text-align:left; padding:15px;">🛡️ Güvenlik Sistemleri</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('iklimlendirme')"
+                    style="text-align:left; padding:15px;">❄️ İklimlendirme (HVAC)</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('beyaz-esya')"
+                    style="text-align:left; padding:15px;">🔧 Beyaz Eşya Servis</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('matbaa')"
+                    style="text-align:left; padding:15px;">🎨 Matbaa & Baskı</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('spor')"
+                    style="text-align:left; padding:15px;">🏋️ Spor & Fitness</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('saglik')"
+                    style="text-align:left; padding:15px;">🏥 Sağlık & Medikal</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('egitim')"
+                    style="text-align:left; padding:15px;">🎓 Eğitim & Danışmanlık</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('enerji')"
+                    style="text-align:left; padding:15px;">🔌 Enerji & Verimlilik</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('mobilya')"
+                    style="text-align:left; padding:15px;">🪑 Mobilya & Dekorasyon</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('evcil-hayvan')"
+                    style="text-align:left; padding:15px;">🐾 Evcil Hayvan</button>
+                <button class="btn btn-secondary" onclick="loadSectorPreset('emlak')"
+                    style="text-align:left; padding:15px;">🏢 Emlak & Gayrimenkul</button>
+            </div>
+
+            <button class="btn" style="margin-top:20px; width:100%; border:1px solid #ddd;"
+                onclick="closeSectorModal()">İptal</button>
+        </div>
+    </div>
+
+    <script src="js/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+    <script src="phase2_features.js"></script>
+</body>
+
+</html>

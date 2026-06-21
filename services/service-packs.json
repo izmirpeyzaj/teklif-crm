@@ -1,0 +1,1387 @@
+{
+    "packs": [
+        {
+            "id": "peyzaj",
+            "name": "Peyzaj ve Bahçe Düzenleme",
+            "icon": "🌿",
+            "description": "Profesyonel bahçe düzenleme, çim, sulama ve aydınlatma hizmetleri",
+            "services": [
+                {
+                    "name": "Rulo Çim Serme",
+                    "price": 55,
+                    "unit": "m2",
+                    "description": "Birinci kalite rulo çim temin ve uygulama. Toprak hazırlığı dahil.",
+                    "conditions": "Uygulama sonrası 2 hafta boyunca günlük sulama zorunludur. Çim tutmaması durumunda 30 gün garanti.",
+                    "image_url": "/images/services/rulo-cim.png"
+                },
+                {
+                    "name": "Çim Tohumu Ekimi",
+                    "price": 30,
+                    "unit": "m2",
+                    "description": "4 mevsim dayanıklı çim tohumu ekimi. Gübreleme ve merdaneleme dahil.",
+                    "conditions": "Çimlenme süresi 15-21 gündür. Bu sürede düzenli sulama müşteriye aittir.",
+                    "image_url": "images/services/peyzaj_cim_tohumu.png"
+                },
+                {
+                    "name": "Otomatik Sulama Sistemi (Ana Hat)",
+                    "price": 85,
+                    "unit": "m",
+                    "description": "PE boru ile ana sulama hattı döşeme. Kazı ve geri dolgu dahil.",
+                    "conditions": "Minimum 50 metre sipariş gereklidir. Elektrik tesisatı ayrı faturalandırılır.",
+                    "image_url": "/images/services/sulama.png"
+                },
+                {
+                    "name": "Pop-up Sprinkler Montajı",
+                    "price": 380,
+                    "unit": "adet",
+                    "description": "Hunter/Rain Bird marka pop-up fıskiye montajı. Nozül ayarı dahil.",
+                    "conditions": "Sprinkler malzeme bedeli fiyata dahildir. Arıza durumunda 1 yıl garanti.",
+                    "image_url": "images/services/peyzaj_sprinkler.png"
+                },
+                {
+                    "name": "Damla Sulama Sistemi",
+                    "price": 45,
+                    "unit": "m",
+                    "description": "Bitki diplerine damla sulama hattı döşeme. Damlatıcılar 30cm aralıklı.",
+                    "conditions": "Filtre ve vana bedeli ayrıca hesaplanır. Minimum 30 metre sipariş.",
+                    "image_url": "images/services/peyzaj_damla_sulama.png"
+                },
+                {
+                    "name": "Bahçe Aydınlatma (LED)",
+                    "price": 550,
+                    "unit": "adet",
+                    "description": "IP65 koruma sınıfı LED bahçe armatürü montajı. Kablo çekimi dahil.",
+                    "conditions": "Elektrik hattı mevcut olmalıdır. Armatür 2 yıl garanti kapsamındadır.",
+                    "image_url": "/images/services/aydinlatma.png"
+                },
+                {
+                    "name": "Yürüyüş Yolu (Parke Taşı)",
+                    "price": 195,
+                    "unit": "m2",
+                    "description": "6cm kalınlıkta parke taşı ile yürüyüş yolu yapımı. Kum ve tesviye dahil.",
+                    "conditions": "Zemin hazırlığı dahildir. 10 ton üzeri araç geçişi için uygun değildir.",
+                    "image_url": "/images/services/parke-yol.png"
+                },
+                {
+                    "name": "Granit Bordür Döşeme",
+                    "price": 95,
+                    "unit": "m",
+                    "description": "50x20x5cm granit bordür taşı uygulama. Beton altlık ve derz dahil.",
+                    "conditions": "Bordür malzemesi fiyata dahildir. Özel kesim ihtiyacında %15 ek ücret.",
+                    "image_url": "images/services/peyzaj_bordur.png"
+                },
+                {
+                    "name": "Süs Havuzu Yapımı",
+                    "price": 4500,
+                    "unit": "m2",
+                    "description": "Betonarme süs havuzu yapımı. Su yalıtımı ve pompa sistemi dahil.",
+                    "conditions": "Minimum 4m2 gereklidir. Balık ekosistemi için ek filtrasyon ayrı hesaplanır.",
+                    "image_url": "images/services/peyzaj_havuz.png"
+                },
+                {
+                    "name": "Ağaç Dikimi (2-3m)",
+                    "price": 450,
+                    "unit": "adet",
+                    "description": "Orta boy süs veya meyve ağacı dikimi. Çukur açma ve gübre dahil.",
+                    "conditions": "Ağaç bedeli ayrıdır. Dikim sonrası 6 ay bakım garantisi verilir.",
+                    "image_url": "/images/services/agac-dikimi.png"
+                },
+                {
+                    "name": "Ağaç Dikimi (4m+)",
+                    "price": 950,
+                    "unit": "adet",
+                    "description": "Büyük boy ağaç dikimi. Vinç/forklift, herek ve bakım dahil.",
+                    "conditions": "Ağaç temini ayrıca faturalandırılır. Tutma garantisi 1 yıldır.",
+                    "image_url": "images/services/peyzaj_agac_buyuk.png"
+                },
+                {
+                    "name": "Çalı ve Süs Bitkisi Dikimi",
+                    "price": 65,
+                    "unit": "adet",
+                    "description": "Defne, zakkum, lavanta vb. süs bitkileri dikimi.",
+                    "conditions": "Bitki bedeli ayrıdır. Minimum 20 adet siparişte %10 indirim.",
+                    "image_url": "/images/services/cali.png"
+                },
+                {
+                    "name": "Toprak Islahı ve Hazırlama",
+                    "price": 25,
+                    "unit": "m2",
+                    "description": "Bahçe toprağı hazırlama, gübre karışımı ve tesviye.",
+                    "conditions": "Derin kazı gerektiren işler için ek ücret uygulanır.",
+                    "image_url": "images/services/peyzaj_toprak.png"
+                },
+                {
+                    "name": "Meyve Ağacı Budama",
+                    "price": 150,
+                    "unit": "adet",
+                    "description": "Teknik budama ve yara yeri pansumanı.",
+                    "conditions": "Atıkların sahadan uzaklaştırılması dahildir.",
+                    "image_url": "images/services/peyzaj_budama.png"
+                },
+                {
+                    "name": "Periyodik İlaçlama (Aylık)",
+                    "price": 750,
+                    "unit": "seans",
+                    "description": "Zirai zararlılara karşı genel bahçe ilaçlaması.",
+                    "conditions": "Kullanılan ilaçlar fiyata dahildir. Evcil hayvan uyarısı yapılır.",
+                    "image_url": "images/services/peyzaj_ilaclama.png"
+                },
+                {
+                    "name": "Bahçe Drenaj Sistemi",
+                    "price": 120,
+                    "unit": "m",
+                    "description": "Drenaj borusu, keçe ve çakıl dolgu uygulaması.",
+                    "conditions": "Hafriyat ve tahliye noktası bağlantısı dahildir.",
+                    "image_url": "images/services/peyzaj_drenaj.png"
+                },
+                {
+                    "name": "Bahçe Çiti (Ahşap)",
+                    "price": 280,
+                    "unit": "m",
+                    "description": "Emprenye ahşap bahçe çiti uygulaması. Kazık ve montaj dahil.",
+                    "conditions": "Ahşap malzeme fiyata dahildir. Özel tasarımlar ek ücretlidir.",
+                    "image_url": "images/services/peyzaj_cit_ahsap.png"
+                },
+                {
+                    "name": "Ahşap Pergola",
+                    "price": 3500,
+                    "unit": "m2",
+                    "description": "Emprenye ahşap veya kompozit pergola yapımı.",
+                    "conditions": "Temel betonu ayrı faturalandırılır. Montaj dahildir.",
+                    "image_url": "/images/services/pergola.png"
+                },
+                {
+                    "name": "Gabion Duvar",
+                    "price": 650,
+                    "unit": "m2",
+                    "description": "Dekoratif gabion kafes duvar yapımı. Taş dolgu dahil.",
+                    "conditions": "Temel hazırlığı ayrıdır. Minimum 5m2 sipariş gereklidir.",
+                    "image_url": "/images/services/gabion.png"
+                },
+                {
+                    "name": "Kaya Bahçesi Düzenleme",
+                    "price": 180,
+                    "unit": "m2",
+                    "description": "Dekoratif kaya ve taş düzenlemesi. Bitki yerleşimi dahil.",
+                    "conditions": "Kaya ve bitki bedeli ayrıdır. Tasarım ücretsizdir.",
+                    "image_url": "images/services/peyzaj_kaya_bahcesi.png"
+                },
+                {
+                    "name": "Bahçe Bakım Sözleşmesi (Aylık)",
+                    "price": 1500,
+                    "unit": "ay",
+                    "description": "Aylık düzenli bahçe bakımı: Çim biçme, budama, sulama kontrolü.",
+                    "conditions": "Minimum 6 ay sözleşme gereklidir. Malzeme bedeli ayrıdır.",
+                    "image_url": "images/services/peyzaj_bakim.png"
+                }
+            ]
+        },
+        {
+            "id": "elektrik",
+            "name": "Elektrik Tesisatı",
+            "icon": "🔌",
+            "description": "Elektrik tesisatı, aydınlatma ve güç sistemleri kurulumu",
+            "services": [
+                {
+                    "name": "Priz Montajı",
+                    "price": 150,
+                    "unit": "adet",
+                    "description": "Yeni priz noktası açma ve montaj.",
+                    "conditions": "Duvar kırma/sıva dahildir. Priz malzemesi ayrıdır.",
+                    "image_url": "/images/services/priz.png"
+                },
+                {
+                    "name": "Anahtar Montajı",
+                    "price": 120,
+                    "unit": "adet",
+                    "description": "Anahtar değişimi veya yeni nokta açma.",
+                    "conditions": "Anahtar malzemesi fiyata dahil değildir.",
+                    "image_url": "images/services/elektrik_anahtar.png"
+                },
+                {
+                    "name": "Avize Montajı",
+                    "price": 200,
+                    "unit": "adet",
+                    "description": "Avize/aydınlatma montajı ve kablo bağlantısı.",
+                    "conditions": "Ağır avizeler için ek sabitleme gerekebilir.",
+                    "image_url": "/images/services/avize.png"
+                },
+                {
+                    "name": "Spot Lamba Montajı",
+                    "price": 100,
+                    "unit": "adet",
+                    "description": "Sıva altı/üstü spot lamba montajı.",
+                    "conditions": "Lamba malzemesi ayrı faturalandırılır."
+                },
+                {
+                    "name": "Sensörlü Aydınlatma Montajı",
+                    "price": 250,
+                    "unit": "adet",
+                    "description": "Hareket sensörlü tavan/duvar armatürü montajı.",
+                    "conditions": "Armatür dahildir. 2 yıl garanti."
+                },
+                {
+                    "name": "Kablo Çekimi",
+                    "price": 45,
+                    "unit": "m",
+                    "description": "NYM kablo döşeme ve çekimi.",
+                    "conditions": "Spiralli veya gömme uygulama seçenekleri mevcuttur.",
+                    "image_url": "/images/services/kablo.png"
+                },
+                {
+                    "name": "İnternet / Data Hattı Çekilmesi",
+                    "price": 60,
+                    "unit": "m",
+                    "description": "Cat6 kablo çekimi ve RJ45 sonlandırma.",
+                    "conditions": "Kanal içi veya sıva altı uygulama.",
+                    "image_url": "images/services/elektrik_internet.png"
+                },
+                {
+                    "name": "Elektrik Panosu Montajı",
+                    "price": 1500,
+                    "unit": "adet",
+                    "description": "Sigorta panosu kurulumu ve bağlantısı.",
+                    "conditions": "Sigortalar ayrı faturalandırılır. Projelendirme dahildir.",
+                    "image_url": "/images/services/pano.png"
+                },
+                {
+                    "name": "Akıllı Ev Sistemi Kurulumu",
+                    "price": 15000,
+                    "unit": "paket",
+                    "description": "Temel aydınlatma ve priz otomasyonu kurulumu.",
+                    "conditions": "Hub ve ilk 10 modül dahildir. İnternet gereklidir.",
+                    "image_url": "images/services/elektrik_akilli_ev.png"
+                },
+                {
+                    "name": "Görüntülü Diyafon Montajı",
+                    "price": 1200,
+                    "unit": "daire",
+                    "description": "Audio/Mas marka görüntülü diyafon kurulumu.",
+                    "conditions": "Panel dahil, zil tesisatı mevcut olmalıdır.",
+                    "image_url": "images/services/elektrik_diyafon.png"
+                },
+                {
+                    "name": "Topraklama Tesisatı",
+                    "price": 800,
+                    "unit": "adet",
+                    "description": "Güvenlik topraklama sistemi kurulumu.",
+                    "conditions": "Ölçüm ve sertifika dahildir."
+                },
+                {
+                    "name": "Kaçak Akım Rölesi",
+                    "price": 350,
+                    "unit": "adet",
+                    "description": "Kaçak akım koruma şalteri montajı.",
+                    "conditions": "Pano düzenleme dahildir.",
+                    "image_url": "images/services/elektrik_kacak_role.png"
+                },
+                {
+                    "name": "Elektrik Arıza Tespiti",
+                    "price": 250,
+                    "unit": "saat",
+                    "description": "Elektrik arızası tespit ve analizi.",
+                    "conditions": "İlk saat ücrete dahil, devamı saatlik faturalanır.",
+                    "image_url": "images/services/elektrik_ariza_tespit.png"
+                },
+                {
+                    "name": "Kablo Kanalı Döşeme",
+                    "price": 35,
+                    "unit": "m",
+                    "description": "Plastik veya metal kablo kanalı montajı.",
+                    "conditions": "Kanal malzemesi dahildir.",
+                    "image_url": "images/services/elektrik_kablo_kanal.png"
+                }
+            ]
+        },
+        {
+            "id": "tesisat",
+            "name": "Su Tesisatı",
+            "icon": "🚿",
+            "description": "Su tesisatı, pis su ve sıhhi tesisat hizmetleri",
+            "services": [
+                {
+                    "name": "Tıkanıklık Açma",
+                    "price": 300,
+                    "unit": "adet",
+                    "description": "Lavabo, tuvalet veya gider tıkanıklığı açma.",
+                    "conditions": "Ağır tıkanıklıklarda robotlu açma ayrıca fiyatlandırılır.",
+                    "image_url": "images/services/tesisat_tikaniklik.png"
+                },
+                {
+                    "name": "Batarya Montajı",
+                    "price": 200,
+                    "unit": "adet",
+                    "description": "Musluk/batarya değişimi ve montajı.",
+                    "conditions": "Batarya bedeli hariçtir.",
+                    "image_url": "images/services/tesisat_batarya.png"
+                },
+                {
+                    "name": "Lavabo Montajı",
+                    "price": 350,
+                    "unit": "adet",
+                    "description": "Yeni lavabo kurulumu ve bağlantısı.",
+                    "conditions": "Lavabo bedeli ayrıdır. Sifon dahildir.",
+                    "image_url": "/images/services/lavabo.png"
+                },
+                {
+                    "name": "Klozet Montajı",
+                    "price": 400,
+                    "unit": "adet",
+                    "description": "WC değişimi/montajı ve bağlantısı.",
+                    "conditions": "Eski klozetin sökümü dahildir.",
+                    "image_url": "/images/services/klozet.png"
+                },
+                {
+                    "name": "Duş/Küvet Montajı",
+                    "price": 600,
+                    "unit": "adet",
+                    "description": "Duş teknesi veya küvet kurulumu.",
+                    "conditions": "Sıhhi tesisat bağlantısı dahildir.",
+                    "image_url": "/images/services/dus.png"
+                },
+                {
+                    "name": "PPR Boru Döşeme",
+                    "price": 65,
+                    "unit": "m",
+                    "description": "Temiz su borusu döşeme ve kaynak.",
+                    "conditions": "Duvar kırma/sıva ayrı faturalanır.",
+                    "image_url": "/images/services/boru.png"
+                },
+                {
+                    "name": "PVC Atık Boru",
+                    "price": 55,
+                    "unit": "m",
+                    "description": "PVC pis su borusu döşeme.",
+                    "conditions": "Yapıştırma ve bağlantı dahildir.",
+                    "image_url": "images/services/tesisat_pvc_boru.png"
+                },
+                {
+                    "name": "Kombi Montajı",
+                    "price": 1200,
+                    "unit": "adet",
+                    "description": "Yoğuşmalı kombi kurulumu ve devreye alma.",
+                    "conditions": "Baca ve gaz hattı ayrıdır.",
+                    "image_url": "/images/services/kombi.png"
+                },
+                {
+                    "name": "Şofben Montajı",
+                    "price": 400,
+                    "unit": "adet",
+                    "description": "Ani su ısıtıcı (şofben) montajı.",
+                    "conditions": "Şofben bedeli hariçtir. Elektrik/doğalgaz bağlantısı dahildir.",
+                    "image_url": "images/services/tesisat_sofben.png"
+                },
+                {
+                    "name": "Sıhhi Tesisat Tadilatı",
+                    "price": 150,
+                    "unit": "m2",
+                    "description": "Banyo/mutfak tesisat yenileme.",
+                    "conditions": "Proje çıkarılması ayrıdır.",
+                    "image_url": "images/services/tesisat_tadilat.png"
+                },
+                {
+                    "name": "Kalorifer Petek Montajı",
+                    "price": 450,
+                    "unit": "adet",
+                    "description": "Panel radyatör kurulumu ve bağlantısı.",
+                    "conditions": "Petek bedeli hariçtir.",
+                    "image_url": "images/services/tesisat_kalorifer.png"
+                },
+                {
+                    "name": "Su Kaçak Tespiti",
+                    "price": 400,
+                    "unit": "saat",
+                    "description": "Termal kamera veya profesyonel ölçüm cihazları ile arıza tespiti.",
+                    "conditions": "Onarım ayrıca faturalandırılır.",
+                    "image_url": "images/services/tesisat_su_kacak.png"
+                },
+                {
+                    "name": "Gömme Rezervuar Montajı",
+                    "price": 850,
+                    "unit": "adet",
+                    "description": "Vitra/Geberit vb. gömme rezervuar montajı.",
+                    "conditions": "Duvar kırma ve kapama işleri dahildir.",
+                    "image_url": "images/services/tesisat_rezervuar.png"
+                },
+                {
+                    "name": "Hidrofor ve Pompa Kurulumu",
+                    "price": 2500,
+                    "unit": "adet",
+                    "description": "Bina tipi hidrofor ve pompa sistemi kurulumu.",
+                    "conditions": "Malzeme bedeli ayrıdır. Basınç ayarı dahildir.",
+                    "image_url": "images/services/tesisat_hidrofor.png"
+                },
+                {
+                    "name": "Su Arıtma Filtre Değişimi",
+                    "price": 600,
+                    "unit": "set",
+                    "description": "3'lü veya 5'li filtre seti değişimi ve bakım.",
+                    "conditions": "Filtreler dahildir. Membran değişimi ek ücrete tabidir.",
+                    "image_url": "images/services/tesisat_aritma.png"
+                },
+                {
+                    "name": "Yerden Isıtma Tesisatı",
+                    "price": 180,
+                    "unit": "m2",
+                    "description": "Yerden ısıtma borusu ve kollektör bağlantısı.",
+                    "conditions": "Yalıtım malzemesi (strafor) hariçtir. İşçilik ve boru dahildir.",
+                    "image_url": "images/services/tesisat_yerden_isitma.png"
+                },
+                {
+                    "name": "Termostatik Vana Montajı",
+                    "price": 150,
+                    "unit": "adet",
+                    "description": "Radyatörler için termostatik vana değişimi.",
+                    "conditions": "Vana malzemesi ayrıdır."
+                }
+            ]
+        },
+        {
+            "id": "insaat",
+            "name": "İnşaat ve Tadilat",
+            "icon": "🏗️",
+            "description": "İnşaat, tadilat, duvar ve zemin işleri",
+            "services": [
+                {
+                    "name": "Duvar Örme (Tuğla)",
+                    "price": 180,
+                    "unit": "m2",
+                    "description": "Bims/tuğla duvar yapımı.",
+                    "conditions": "Malzeme bedeli dahildir.",
+                    "image_url": "images/services/insaat_kalip.png"
+                },
+                {
+                    "name": "Sıva İşleri",
+                    "price": 120,
+                    "unit": "m2",
+                    "description": "İç/dış cephe sıva uygulaması.",
+                    "conditions": "Hazır sıva kullanılır. İskele ayrıdır.",
+                    "image_url": "/images/services/siva.png"
+                },
+                {
+                    "name": "Alçıpan Tavan",
+                    "price": 150,
+                    "unit": "m2",
+                    "description": "Asma tavan yapımı ve montajı.",
+                    "conditions": "Profil sistemi dahildir.",
+                    "image_url": "/images/services/alcipan.png"
+                },
+                {
+                    "name": "Alçıpan Bölme Duvar",
+                    "price": 180,
+                    "unit": "m2",
+                    "description": "Hafif bölme duvar sistemi kurulumu.",
+                    "conditions": "Yalıtım opsiyoneldir, ek ücret uygulanır.",
+                    "image_url": "images/services/insaat_alcipan_bolme.png"
+                },
+                {
+                    "name": "Seramik Döşeme",
+                    "price": 120,
+                    "unit": "m2",
+                    "description": "Yer/duvar seramik kaplama.",
+                    "conditions": "Seramik bedeli hariçtir. Derz ve yapıştırıcı dahil.",
+                    "image_url": "/images/services/seramik.png"
+                },
+                {
+                    "name": "Granit Döşeme",
+                    "price": 200,
+                    "unit": "m2",
+                    "description": "Doğal taş döşeme uygulaması.",
+                    "conditions": "Taş bedeli ayrıdır.",
+                    "image_url": "images/services/insaat_granit.png"
+                },
+                {
+                    "name": "Laminat Parke",
+                    "price": 100,
+                    "unit": "m2",
+                    "description": "Laminat parke döşeme ve süpürgelik.",
+                    "conditions": "Süpürgelik dahildir. Şilte ayrı.",
+                    "image_url": "/images/services/laminat.png"
+                },
+                {
+                    "name": "Şap Dökümü",
+                    "price": 85,
+                    "unit": "m2",
+                    "description": "Tesviye betonu dökümü.",
+                    "conditions": "Minimum 5cm kalınlık uygulanır.",
+                    "image_url": "images/services/insaat_sap.png"
+                },
+                {
+                    "name": "Helikopterli Şap (Endüstriyel)",
+                    "price": 110,
+                    "unit": "m2",
+                    "description": "Fabrika/depo tipi perdahlı beton uygulaması.",
+                    "conditions": "Yüzey sertleştirici ve kür dahildir. Çelik hasır ayrıdır.",
+                    "image_url": "images/services/insaat_sap.png"
+                },
+                {
+                    "name": "Mantolama (Dış)",
+                    "price": 350,
+                    "unit": "m2",
+                    "description": "Isı yalıtım sistemi uygulaması.",
+                    "conditions": "EPS veya XPS seçeneği mevcuttur.",
+                    "image_url": "/images/services/mantolama.png"
+                },
+                {
+                    "name": "Su İzolasyonu",
+                    "price": 120,
+                    "unit": "m2",
+                    "description": "Banyo/teras su yalıtımı.",
+                    "conditions": "Çift kat uygulama yapılır.",
+                    "image_url": "images/services/insaat_izolasyon.png"
+                },
+                {
+                    "name": "Çatı İzolasyonu (Membran)",
+                    "price": 180,
+                    "unit": "m2",
+                    "description": "Arduazlı mebran ile çatı yalıtımı.",
+                    "conditions": "Eski mebran sökümü gerekirse ek ücret uygulanır.",
+                    "image_url": "images/services/insaat_cati.png"
+                },
+                {
+                    "name": "Moloz/Enkaz Kaldırma",
+                    "price": 500,
+                    "unit": "ton",
+                    "description": "Hafriyat ve moloz taşıma.",
+                    "conditions": "Belediye izni gereklidir.",
+                    "image_url": "images/services/insaat_moloz.png"
+                },
+                {
+                    "name": "Mutfak Dolabı Montajı",
+                    "price": 3500,
+                    "unit": "set",
+                    "description": "Modüler veya özel yapım mutfak montajı.",
+                    "conditions": "Dolap bedeli hariçtir. Tezgah montajı dahildir.",
+                    "image_url": "images/services/insaat_mutfak.png"
+                },
+                {
+                    "name": "Çelik Kapı Montajı",
+                    "price": 800,
+                    "unit": "adet",
+                    "description": "Daire giriş çelik kapısı montajı.",
+                    "conditions": "Kasa dolgusu ve pervaz ayarı dahildir.",
+                    "image_url": "images/services/insaat_celik_kapi.png"
+                },
+                {
+                    "name": "Pencere Montajı (PVC)",
+                    "price": 350,
+                    "unit": "m2",
+                    "description": "Isıcamlı PVC pencere montajı.",
+                    "conditions": "Eski pencere sökümü dahildir.",
+                    "image_url": "images/services/insaat_pencere.png"
+                }
+            ]
+        },
+        {
+            "id": "temizlik",
+            "name": "Temizlik Hizmetleri",
+            "icon": "🧹",
+            "description": "Ev, ofis ve inşaat sonrası temizlik",
+            "services": [
+                {
+                    "name": "Ev Temizliği (Günlük)",
+                    "price": 80,
+                    "unit": "m2",
+                    "description": "Detaylı ev temizliği hizmeti.",
+                    "conditions": "Temizlik malzemesi tarafımızdan sağlanır.",
+                    "image_url": "images/services/temizlik_ev.png"
+                },
+                {
+                    "name": "Ofis Temizliği",
+                    "price": 60,
+                    "unit": "m2",
+                    "description": "İş yeri temizlik hizmeti.",
+                    "conditions": "Mesai dışı uygulama tercih edilir.",
+                    "image_url": "/images/services/temizlik-ofis.png"
+                },
+                {
+                    "name": "İnşaat Sonrası Temizlik",
+                    "price": 120,
+                    "unit": "m2",
+                    "description": "Ağır kir ve inşaat artığı temizliği.",
+                    "conditions": "Boya/alçı kalıntıları dahildir.",
+                    "image_url": "/images/services/temizlik-insaat.png"
+                },
+                {
+                    "name": "Cam Temizliği",
+                    "price": 25,
+                    "unit": "m2",
+                    "description": "İç/dış cam silme hizmeti.",
+                    "conditions": "Yüksek katlarda ek ücret uygulanır.",
+                    "image_url": "/images/services/temizlik-cam.png"
+                },
+                {
+                    "name": "Koltuk Yıkama",
+                    "price": 150,
+                    "unit": "koltuk",
+                    "description": "Makineli koltuk yıkama ve dezenfeksiyon.",
+                    "conditions": "Kuruma süresi 4-6 saattir.",
+                    "image_url": "images/services/temizlik_koltuk.png"
+                },
+                {
+                    "name": "Halı Yıkama",
+                    "price": 35,
+                    "unit": "m2",
+                    "description": "Şampuanlı halı yıkama hizmeti.",
+                    "conditions": "Teslimat ayrı ücretlendirilir.",
+                    "image_url": "images/services/temizlik_hali.png"
+                },
+                {
+                    "name": "Yatak Yıkama",
+                    "price": 200,
+                    "unit": "adet",
+                    "description": "Yatak temizliği ve akaryen temizliği.",
+                    "conditions": "Alerjen temizliği dahildir.",
+                    "image_url": "images/services/temizlik_yatak.png"
+                },
+                {
+                    "name": "Mutfak Derin Temizlik",
+                    "price": 500,
+                    "unit": "adet",
+                    "description": "Fırın, davlumbaz ve dolap içi dahil.",
+                    "conditions": "Yağ çözücü özel ürünler kullanılır.",
+                    "image_url": "images/services/temizlik_mutfak.png"
+                },
+                {
+                    "name": "Banyo Derin Temizlik",
+                    "price": 300,
+                    "unit": "adet",
+                    "description": "Kireç/küf temizliği ve dezenfeksiyon.",
+                    "conditions": "Derz temizliği dahildir.",
+                    "image_url": "images/services/temizlik_banyo.png"
+                },
+                {
+                    "name": "Bahçe Temizliği",
+                    "price": 50,
+                    "unit": "m2",
+                    "description": "Ot/yaprak toplama ve genel temizlik.",
+                    "conditions": "Atık taşıma dahildir.",
+                    "image_url": "images/services/temizlik_bahce.png"
+                },
+                {
+                    "name": "Endüstriyel Zemin Temizliği",
+                    "price": 45,
+                    "unit": "m2",
+                    "description": "Fabrika ve depo tipi zeminlerin makineli temizliği.",
+                    "conditions": "Zemin tipine göre özel solüsyonlar kullanılır.",
+                    "image_url": "images/services/temizlik_endustriyel.png"
+                },
+                {
+                    "name": "Dezenfeksiyon Hizmeti",
+                    "price": 350,
+                    "unit": "seans",
+                    "description": "Ulv cihazı ile ortam dezenfeksiyonu.",
+                    "conditions": "Sağlık Bakanlığı onaylı ürünler kullanılır.",
+                    "image_url": "images/services/temizlik_dezenfeksiyon.png"
+                }
+            ]
+        },
+        {
+            "id": "boya",
+            "name": "Boya ve Badana",
+            "icon": "🎨",
+            "description": "İç cephe, dış cephe ve dekoratif boyama",
+            "services": [
+                {
+                    "name": "İç Cephe Boyama",
+                    "price": 45,
+                    "unit": "m2",
+                    "description": "Plastik/silikonlu iç cephe boyası.",
+                    "conditions": "2 kat uygulama yapılır.",
+                    "image_url": "/images/services/boya-ic-mekan.png"
+                },
+                {
+                    "name": "Dış Cephe Boyama",
+                    "price": 65,
+                    "unit": "m2",
+                    "description": "Akrilik dış cephe boyası uygulaması.",
+                    "conditions": "İskele bedeli dahil değildir.",
+                    "image_url": "/images/services/boya-dis-cephe.png"
+                },
+                {
+                    "name": "Tavan Boyama",
+                    "price": 40,
+                    "unit": "m2",
+                    "description": "Tavan boyası uygulaması.",
+                    "conditions": "Beyaz boya dahildir.",
+                    "image_url": "images/services/boya_tavan.png"
+                },
+                {
+                    "name": "Kapı/Pencere Boyama",
+                    "price": 200,
+                    "unit": "adet",
+                    "description": "Ahşap/metal kapı-pencere boyama.",
+                    "conditions": "Zımpara ve astar dahildir.",
+                    "image_url": "images/services/boya_kapi.png"
+                },
+                {
+                    "name": "Dekoratif Boya",
+                    "price": 120,
+                    "unit": "m2",
+                    "description": "Sünger/fırça tekniği ile dekoratif boyama.",
+                    "conditions": "Malzeme seçimine göre fiyat değişir.",
+                    "image_url": "images/services/boya_dekoratif.png"
+                },
+                {
+                    "name": "Duvar Kağıdı Uygulaması",
+                    "price": 80,
+                    "unit": "m2",
+                    "description": "Profesyonel duvar kağıdı yapıştırma.",
+                    "conditions": "Kağıt bedeli hariçtir.",
+                    "image_url": "images/services/boya_duvar_kagidi.png"
+                },
+                {
+                    "name": "Ahşap Cila ve Vernik",
+                    "price": 150,
+                    "unit": "m2",
+                    "description": "Parke veya mobilya yüzey yenileme.",
+                    "conditions": "Eski katmanın sistre yapılması dahildir.",
+                    "image_url": "images/services/boya_cila.png"
+                },
+                {
+                    "name": "Epoksi Zemin Kaplama",
+                    "price": 450,
+                    "unit": "m2",
+                    "description": "Dayanıklı ve parlak endüstriyel zemin kaplaması.",
+                    "conditions": "Zemin hazırlığı ve astar dahildir.",
+                    "image_url": "images/services/boya_epoksi.png"
+                }
+            ]
+        },
+        {
+            "id": "organizasyon",
+            "name": "Organizasyon ve Etkinlik",
+            "icon": "🎉",
+            "description": "Düğün, nişan, kurumsal etkinlik ve kutlama organizasyonları",
+            "services": [
+                {
+                    "name": "Düğün Organizasyon Paketi",
+                    "price": 25000,
+                    "unit": "paket",
+                    "description": "Masa-sandalye süsleme, gelin yolu, nikah masası ve genel dekorasyon.",
+                    "conditions": "Mekan kirası dahil değildir. 250 kişiye kadar geçerlidir.",
+                    "image_url": "images/services/organizasyon_dugun.png"
+                },
+                {
+                    "name": "Catering Hizmeti (Kişi Başı)",
+                    "price": 450,
+                    "unit": "kişi",
+                    "description": "3 çeşit ana yemek, ara sıcak ve limitsiz meşrubat.",
+                    "conditions": "Minimum 100 kişilik sipariş gereklidir.",
+                    "image_url": "/images/services/catering.png"
+                },
+                {
+                    "name": "Ses ve Işık Sistemleri",
+                    "price": 7500,
+                    "unit": "gün",
+                    "description": "Profesyonel ses tesisatı, 4 adet robot ışık ve DJ kabini.",
+                    "conditions": "Teknisyen desteği dahildir. Jeneratör hariçtir.",
+                    "image_url": "images/services/organizasyon_ses_isik.png"
+                },
+                {
+                    "name": "Drone ve Video Çekimi",
+                    "price": 3500,
+                    "unit": "gün",
+                    "description": "4K havadan ve yerden çekim, kurgu ve montaj.",
+                    "conditions": "Ham görüntüler teslim edilir. Kurgu 1 hafta sürer.",
+                    "image_url": "images/services/organizasyon_drone.png"
+                },
+                {
+                    "name": "Hostes ve Karşılama Ekibi",
+                    "price": 600,
+                    "unit": "kişi/gün",
+                    "description": "Profesyonel karşılama ve yönlendirme personeli.",
+                    "conditions": "Kıyafet konsepte göre ayarlanır.",
+                    "image_url": "images/services/organizasyon_hostes.png"
+                },
+                {
+                    "name": "Sahne ve Podyum Kurulumu",
+                    "price": 150,
+                    "unit": "m2",
+                    "description": "Standart veya özel tasarım sahne kurulumu.",
+                    "conditions": "Halı kaplama ve basamak dahildir.",
+                    "image_url": "images/services/organizasyon_sahne.png"
+                },
+                {
+                    "name": "Kokteyl ve İkram Menüsü",
+                    "price": 180,
+                    "unit": "kişi",
+                    "description": "Soğuk-sıcak kanapeler ve soft içecekler.",
+                    "conditions": "Garsone hizmeti dahildir. Minimum 50 kişi.",
+                    "image_url": "images/services/organizasyon_kokteyl.png"
+                }
+            ]
+        },
+        {
+            "id": "ic_mimarlik",
+            "name": "İç Mimarlık ve Dekorasyon",
+            "icon": "📐",
+            "description": "İç mekan tasarımı, 3D görselleştirme ve uygulama projeleri",
+            "services": [
+                {
+                    "name": "İç Mekan Tasarım Projesi",
+                    "price": 15000,
+                    "unit": "proje",
+                    "description": "Tek mahal için 2 adet 3D render ve yerleşim planı.",
+                    "conditions": "Uygulama kontrolü dahil değildir.",
+                    "image_url": "/images/services/ic-mimarlik.png"
+                },
+                {
+                    "name": "Özel Mobilya İmalatı",
+                    "price": 8500,
+                    "unit": "m",
+                    "description": "MDF lam veya lake özel tasarım dolap/ünite yapımı.",
+                    "conditions": "Montaj ve nakliye dahildir.",
+                    "image_url": "images/services/ic_mimarlik_mobilya.png"
+                },
+                {
+                    "name": "3D Görselleştirme ve Render",
+                    "price": 2500,
+                    "unit": "mekan",
+                    "description": "Fotorealistik 3D render ve materyal çalışmaları.",
+                    "conditions": "Mekan başına 3 farklı açı sunulur.",
+                    "image_url": "images/services/ic_mimarlik_render.png"
+                },
+                {
+                    "name": "Teknik Çizim ve Detaylandırma",
+                    "price": 1500,
+                    "unit": "sayfa",
+                    "description": "Mobilya, asma tavan ve elektrik detay çizimleri.",
+                    "conditions": "Ölçü kontrolü yerinde yapılır.",
+                    "image_url": "images/services/ic_mimarlik_teknik.png"
+                },
+                {
+                    "name": "Saha Uygulama ve Kontrolörlük",
+                    "price": 5000,
+                    "unit": "ay",
+                    "description": "Şantiye takibi, usta yönetimi ve kalite kontrol.",
+                    "conditions": "Haftalık 2 saha ziyareti dahildir.",
+                    "image_url": "images/services/ic_mimarlik_saha.png"
+                },
+                {
+                    "name": "Aydınlatma ve Elektrik Planı",
+                    "price": 2000,
+                    "unit": "proje",
+                    "description": "Lümen hesabı ve dekoratif aydınlatma yerleşim planı.",
+                    "conditions": "Armatür listesi (BOQ) dahildir.",
+                    "image_url": "images/services/ic_mimarlik_aydinlatma.png"
+                },
+                {
+                    "name": "Mekanik ve Havalandırma Projesi",
+                    "price": 3000,
+                    "unit": "proje",
+                    "description": "İç mekan iklimlendirme ve tesisat yerleşim tasarımı.",
+                    "conditions": "Mevcut yapı statiği dikkate alınır."
+                },
+                {
+                    "name": "Mobilya ve Detay Tasarımı",
+                    "price": 4500,
+                    "unit": "set",
+                    "description": "Özel üretim mutfak, banyo ve giyinme odası tasarımları.",
+                    "conditions": "İmalat dosyası dahildir."
+                },
+                {
+                    "name": "Konsept ve Moodboard Hazırlama",
+                    "price": 1200,
+                    "unit": "mekan",
+                    "description": "Renk paleti, malzeme numuneleri ve stil belirleme.",
+                    "conditions": "Bir adet revizyon dahildir.",
+                    "image_url": "images/services/ic_mimarlik_moodboard.png"
+                },
+                {
+                    "name": "Akustik ve Ses Yalıtım Çözümü",
+                    "price": 3500,
+                    "unit": "mekan",
+                    "description": "Sinema salonu, ofis veya ev için akustik panel yerleşimi.",
+                    "conditions": "Desibel ölçümü fiyata dahildir.",
+                    "image_url": "images/services/ic_mimarlik_akustik.png"
+                },
+                {
+                    "name": "Peyzaj ve Dış Mekan Tasarımı",
+                    "price": 2800,
+                    "unit": "proje",
+                    "description": "Teras, balkon veya kış bahçesi dekorasyon projesi.",
+                    "conditions": "Bitki seçim listesi dahildir."
+                },
+                {
+                    "name": "Anahtar Teslim Tadilat Yönetimi",
+                    "price": 15,
+                    "unit": "%",
+                    "description": "Tüm uygulama sürecinin bütçe ve süre yönetimi.",
+                    "conditions": "Toplam yatırım tutarı üzerinden hesaplanır."
+                }
+            ]
+        },
+        {
+            "id": "yazilim",
+            "name": "Yazılım ve Bilişim",
+            "icon": "💻",
+            "description": "Web sitesi, mobil uygulama ve sistem bakım hizmetleri",
+            "services": [
+                {
+                    "name": "Kurumsal Web Sitesi (Vite/React)",
+                    "price": 15000,
+                    "unit": "proje",
+                    "description": "Modern, hızlı ve SEO uyumlu kurumsal tanıtım sitesi.",
+                    "conditions": "1 yıl teknik destek dahildir.",
+                    "image_url": "images/services/yazilim_web.png"
+                },
+                {
+                    "name": "Mobil Uygulama (Hybrid)",
+                    "price": 35000,
+                    "unit": "proje",
+                    "description": "iOS ve Android uyumlu, Flutter veya React Native uygulama.",
+                    "conditions": "Mağaza yükleme süreçleri dahildir.",
+                    "image_url": "images/services/yazilim_mobil.png"
+                },
+                {
+                    "name": "API Entegrasyonu",
+                    "price": 5000,
+                    "unit": "adet",
+                    "description": "Ödeme sistemleri, kargo veya CRM entegrasyonu.",
+                    "conditions": "Dokümantasyon sağlanması durumunda geçerlidir.",
+                    "image_url": "images/services/yazilim_api.png"
+                },
+                {
+                    "name": "Teknik SEO Optimizasyonu",
+                    "price": 4000,
+                    "unit": "site",
+                    "description": "Site hızı, Core Web Vitals ve şema yapılandırması.",
+                    "conditions": "İçerik optimizasyonu hariçtir.",
+                    "image_url": "images/services/yazilim_seo.png"
+                },
+                {
+                    "name": "Bulut (Cloud) Göç ve Yönetimi",
+                    "price": 6000,
+                    "unit": "proje",
+                    "description": "AWS, Azure veya Google Cloud üzerine taşıma ve kurulum.",
+                    "conditions": "Sunucu maliyetleri hariçtir.",
+                    "image_url": "images/services/yazilim_cloud.png"
+                },
+                {
+                    "name": "Siber Güvenlik Sızma Testi",
+                    "price": 8000,
+                    "unit": "test",
+                    "description": "Web uygulaması ve sunucu açıklarının tespiti ve raporlanması.",
+                    "conditions": "Sızma testi raporu (PDF) sunulur.",
+                    "image_url": "images/services/yazilim_siber.png"
+                },
+                {
+                    "name": "Yapay Zeka / ML Entegrasyonu",
+                    "price": 12000,
+                    "unit": "proje",
+                    "description": "Chatbot, öneri sistemi veya veri analizi modelleri.",
+                    "conditions": "Model eğitim süreci ek ücrete tabidir.",
+                    "image_url": "images/services/yazilim_ai.png"
+                },
+                {
+                    "name": "QA ve Otomasyon Testi",
+                    "price": 5000,
+                    "unit": "modül",
+                    "description": "Birim, entegrasyon ve uçtan uca otomasyon testleri.",
+                    "conditions": "Test senaryoları müşteri ile belirlenir."
+                },
+                {
+                    "name": "DevOps Kurulumu (CI/CD)",
+                    "price": 4500,
+                    "unit": "proje",
+                    "description": "GitHub Actions veya Jenkins ile otomatik dağıtım hattı.",
+                    "conditions": "Dockerizasyon dahildir.",
+                    "image_url": "images/services/yazilim_devops.png"
+                },
+                {
+                    "name": "Yazılım Bakım ve Güncelleme",
+                    "price": 3000,
+                    "unit": "ay",
+                    "description": "Hata düzeltmeleri, kütüphane güncellemeleri ve izleme.",
+                    "conditions": "SLA süresi 24 saattir."
+                }
+            ]
+        },
+        {
+            "id": "reklam_ajansi",
+            "name": "Reklam ve Dijital Pazarlama",
+            "icon": "📢",
+            "description": "Sosyal medya, SEO ve marka yönetimi",
+            "services": [
+                {
+                    "name": "Sosyal Medya Yönetimi",
+                    "price": 7500,
+                    "unit": "ay",
+                    "description": "İçerik planlama, tasarım ve etkileşim yönetimi.",
+                    "conditions": "Ayda 15 gönderi ve 20 story dahildir.",
+                    "image_url": "images/services/reklam_ajansi_social.png"
+                },
+                {
+                    "name": "Google/Meta Reklam Yönetimi",
+                    "price": 5000,
+                    "unit": "ay",
+                    "description": "Kampanya kurulumu, optimizasyon ve raporlama.",
+                    "conditions": "Reklam bütçesi hariç danışmanlık ücretidir.",
+                    "image_url": "images/services/reklam_google.png"
+                },
+                {
+                    "name": "Tanıtım Filmi Üretimi",
+                    "price": 12000,
+                    "unit": "film",
+                    "description": "Senaryo, çekim ve kurgu dahil 60 saniyelik video.",
+                    "conditions": "1 gün çekim süresi dahildir.",
+                    "image_url": "images/services/reklam_tanitim.png"
+                },
+                {
+                    "name": "Kurumsal Kimlik Tasarımı",
+                    "price": 8000,
+                    "unit": "set",
+                    "description": "Logo, kartvizit, antetli kağıt ve marka rehberi.",
+                    "conditions": "3 farklı logo konsepti sunulur."
+                },
+                {
+                    "name": "Influencer Pazarlama",
+                    "price": 10000,
+                    "unit": "kampanya",
+                    "description": "Marka elçisi seçimi, içerik onayı ve performans ölçümü.",
+                    "conditions": "Influencer ücretleri hariçtir."
+                },
+                {
+                    "name": "E-Mail Pazarlama Otomasyonu",
+                    "price": 3500,
+                    "unit": "kurulum",
+                    "description": "Bülten tasarımı ve otomatik gönderim senaryoları.",
+                    "conditions": "10.000 aboneye kadar geçerlidir."
+                },
+                {
+                    "name": "Halkla İlişkiler (PR) Hizmeti",
+                    "price": 6000,
+                    "unit": "bülten",
+                    "description": "Basın bülteni yazımı ve mecralara servis edilmesi.",
+                    "conditions": "Garantili yayın alanı ayrıca ücretlendirilir."
+                },
+                {
+                    "name": "SEO İçerik Stratejisi",
+                    "price": 4500,
+                    "unit": "ay",
+                    "description": "Anahtar kelime analizi ve blog içerik takvimi.",
+                    "conditions": "Yazım hizmeti dahil değildir."
+                },
+                {
+                    "name": "Açık Hava (OOH) Reklamcılık",
+                    "price": 2500,
+                    "unit": "tasarım",
+                    "description": "Billboard, raket ve megalight görsel tasarımları.",
+                    "conditions": "Baskı ve kiralama hariçtir."
+                },
+                {
+                    "name": "Performans Pazarlaması Auditi",
+                    "price": 3000,
+                    "unit": "rapor",
+                    "description": "Mevcut reklam hesaplarının ROI ve verimlilik analizi.",
+                    "conditions": "İyileştirme önerileri listesi sunulur."
+                }
+            ]
+        },
+        {
+            "id": "solar_enerji",
+            "name": "Solar Güneş Enerjisi",
+            "icon": "☀️",
+            "description": "Güneş paneli sistemleri kurulum ve bakım",
+            "services": [
+                {
+                    "name": "Çatı Tipi Solar Kurulum (5kW)",
+                    "price": 45000,
+                    "unit": "sistem",
+                    "description": "Ev tipi paneller, inverter ve montaj sistemi dahil.",
+                    "conditions": "İzin süreçleri fiyata dahil değildir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Güneş Paneli Temizliği",
+                    "price": 1500,
+                    "unit": "seans",
+                    "description": "Saf su ile profesyonel panel temizleme hizmeti.",
+                    "conditions": "Ulaşımı zor çatılarda vinç ücreti eklenir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Solar İnverter Değişimi",
+                    "price": 2500,
+                    "unit": "adet",
+                    "description": "Arızalı inverter değişimi ve devreye alma.",
+                    "conditions": "İnverter bedeli hariçtir. Yazılım güncellemesi dahildir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Akü Depolama Sistemi Kurulumu",
+                    "price": 4500,
+                    "unit": "adet",
+                    "description": "Lityum veya Jel akü bankası kurulumu ve BMS ayarı.",
+                    "conditions": "Aküler ayrı faturalandırılır.",
+                    "image_url": "images/services/solar_batarya.png"
+                },
+                {
+                    "name": "Solar Aydınlatma (Direk Tipi)",
+                    "price": 2800,
+                    "unit": "adet",
+                    "description": "Kendinden paneli LED sokak/bahçe direği montajı.",
+                    "conditions": "Ankraj ve temel betonu dahildir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Güneş Enerjisi Fizibilite Raporu",
+                    "price": 3000,
+                    "unit": "rapor",
+                    "description": "Çatı alanı, gölgeleme analizi ve ROI hesaplama.",
+                    "conditions": "Yerinde keşif dahildir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Arazi Tipi GES Kurulum (100kW+)",
+                    "price": 25000,
+                    "unit": "kWp",
+                    "description": "Büyük ölçekli arazi projeleri için anahtar teslim kurulum.",
+                    "conditions": "Hafriyat ve panel bedeli hariç montaj işçiliğidir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Solar Panel Verimlilik Testi",
+                    "price": 2000,
+                    "unit": "seans",
+                    "description": "Termal kamera ve I-V curve tracer ile panel analizi.",
+                    "conditions": "Arıza tespit raporu sunulur.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Hibrit Solar Sistem Kurulumu",
+                    "price": 55000,
+                    "unit": "sistem",
+                    "description": "Şebeke bağlantılı ve akü destekli kesintisiz enerji sistemi.",
+                    "conditions": "Otomatik transfer anahtarı (ATS) fiyata dahildir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Tarımsal Sulama Solar Paketi",
+                    "price": 18000,
+                    "unit": "paket",
+                    "description": "Dalgıç pompa sürücüsü ve panel konstrüksiyonu kurulumu.",
+                    "conditions": "Pompa bedeli hariçtir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "Solar Otopark (Carport) Montajı",
+                    "price": 12000,
+                    "unit": "araç",
+                    "description": "Çelik konstrüksiyonlu, üzeri panel kaplı otopark alanı.",
+                    "conditions": "Temel ankraj işleri dahildir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                },
+                {
+                    "name": "GES Periyodik Bakım (Yıllık)",
+                    "price": 5000,
+                    "unit": "yıl",
+                    "description": "Yılda 2 kez genel kontrol, temizlik ve raporlama.",
+                    "conditions": "Yedek parça değişimi durumunda parça bedeli eklenir.",
+                    "image_url": "images/services/solar_kurulum.png"
+                }
+            ]
+        },
+        {
+            "id": "guvenlik",
+            "name": "Güvenlik Sistemleri",
+            "icon": "🛡️",
+            "description": "Kamera, alarm ve geçiş kontrol sistemleri",
+            "services": [
+                {
+                    "name": "Kamera Sistemi Paketi (4'lü)",
+                    "price": 8500,
+                    "unit": "set",
+                    "description": "4 adet IP kamera, 1 adet kayıt cihazı ve kurulum.",
+                    "conditions": "Kablo mesafesi 100m'ye kadar dahildir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Hırsız Alarm Sistemi",
+                    "price": 4500,
+                    "unit": "set",
+                    "description": "Merkezi panel, hareket sensörleri ve siren.",
+                    "conditions": "Aylık merkez bağlantısı opsiyoneldir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Yangın Algılama Sistemi",
+                    "price": 6500,
+                    "unit": "set",
+                    "description": "Duman dedektörleri, buton ve yangın paneli.",
+                    "conditions": "İtfaiye onaylı proje dahildir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Parmak İzi / Kartlı Geçiş",
+                    "price": 1800,
+                    "unit": "kapı",
+                    "description": "Personel devam kontrol ve geçiş yetkilendirme sistemi.",
+                    "conditions": "Yazılım kurulumu ve ilk 10 kart dahildir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Plaka Tanıma Sistemi",
+                    "price": 12000,
+                    "unit": "set",
+                    "description": "Otopark girişi için yüksek çözünürlüklü PTS kamerası ve yazılım.",
+                    "conditions": "Bariyer bağlantısı dahildir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Kablosuz Ev Güvenlik Paketi",
+                    "price": 3200,
+                    "unit": "paket",
+                    "description": "Kablo kirliliği olmadan çalışan akıllı sensör ve siren seti.",
+                    "conditions": "Mobil uygulama üzerinden takip dahildir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Görüntülü Diafon Sistemi",
+                    "price": 2500,
+                    "unit": "daire",
+                    "description": "7 inç monitörlü, gece görüşlü zil paneli dahil sistem.",
+                    "conditions": "Bina içi hazır tesisat varsa geçerli fiyattır.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Mağaza Ürün Koruma Sistemi",
+                    "price": 15000,
+                    "unit": "set",
+                    "description": "Giriş antenleri ve 500 adet alarm etiketi/çözücü.",
+                    "conditions": "Montaj ve kalibrasyon dahildir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "X-Ray Cihazı Kurulumu",
+                    "price": 5000,
+                    "unit": "adet",
+                    "description": "Bagaj ve paket tarama cihazı kurulum/eğitim hizmeti.",
+                    "conditions": "Cihaz nakliyesi ve TAEK raporu hariçtir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Akıllı Kilit Sistemi",
+                    "price": 3800,
+                    "unit": "kapı",
+                    "description": "Bluetooth/Wi-Fi destekli, anahtarsız giriş sistemi.",
+                    "conditions": "Mevcut kapı mekanizması uygunluğu kontrol edilmelidir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                },
+                {
+                    "name": "Güvenlik Yazılım Güncelleme",
+                    "price": 1200,
+                    "unit": "seans",
+                    "description": "Kayıt cihazı Firmware güncelleme ve disk sağlığı kontrolü.",
+                    "conditions": "Yedekleme hizmeti dahildir.",
+                    "image_url": "images/services/kamera_kurulum.png"
+                }
+            ]
+        },
+        {
+            "id": "hvac",
+            "name": "HVAC (İklimlendirme)",
+            "icon": "❄️",
+            "description": "Klima, havalandırma ve merkezi ısıtma",
+            "services": [
+                {
+                    "name": "Klima Bakım ve Dezenfeksiyon",
+                    "price": 650,
+                    "unit": "adet",
+                    "description": "Gaz kontrolü, filtre temizliği ve iç ünite ilaçlama.",
+                    "conditions": "Gaz basımı ek ücrete tabidir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Havalandırma Kanal Temizliği",
+                    "price": 120,
+                    "unit": "m",
+                    "description": "Robotik fırça ile kanal içi temizlik.",
+                    "conditions": "Minimum 20 metre çalışma gereklidir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "VRF / VRV Ünite Montajı",
+                    "price": 3500,
+                    "unit": "adet",
+                    "description": "Merkezi klima sistemi iç veya dış ünite montajı.",
+                    "conditions": "Bakır boru hattı ayrıca hesaplanır.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Isı Pompası Kurulumu",
+                    "price": 7500,
+                    "unit": "adet",
+                    "description": "Hava kaynaklı ısı pompası montajı ve tesisat bağlantısı.",
+                    "conditions": "Elektrik besleme hattı hariçtir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Merkezi Sistem Filtre Değişimi",
+                    "price": 1200,
+                    "unit": "adet",
+                    "description": "Klima santrali (AKS) torba ve panel filtre değişimi.",
+                    "conditions": "Filtre bedeli dahildir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Soğuk Oda Paneli Kurulumu",
+                    "price": 250,
+                    "unit": "m2",
+                    "description": "Sandviç panel ile soğuk hava deposu yalıtımı.",
+                    "conditions": "Kapı ve zemin yalıtımı ayrıdır.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Isı Geri Kazanım Ünitesi",
+                    "price": 8500,
+                    "unit": "adet",
+                    "description": "Taze hava ve egzoz havası arasında ısı transferi sağlayan ünite kurulumu.",
+                    "conditions": "Kanal bağlantıları ayrıca hesaplanır.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Endüstriyel Mutfak Havalandırma",
+                    "price": 15000,
+                    "unit": "set",
+                    "description": "Davlumbaz, kanal hattı ve salyangoz fan kurulumu.",
+                    "conditions": "Filtre ve fan kapasitesi ihtiyaca göre belirlenir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Data Center Hassas Klima Bakımı",
+                    "price": 2500,
+                    "unit": "adet",
+                    "description": "7/24 çalışan salon tipi hassas cihazların periyodik bakımı.",
+                    "conditions": "Sarf malzeme (nemlendirici silindir vb.) hariçtir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Nem Alma / Nemlendirme Cihazı",
+                    "price": 4500,
+                    "unit": "adet",
+                    "description": "Depo veya arşiv alanları için endüstriyel iklimlendirme cihazı kurulumu.",
+                    "conditions": "Drenaj hattı çekimi dahildir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Hava Perdesi Montajı",
+                    "price": 1200,
+                    "unit": "adet",
+                    "description": "Mağaza girişleri için enerji tasarrufu sağlayan hava perdesi kurulumu.",
+                    "conditions": "Elektrik bağlantısı dahildir.",
+                    "image_url": "images/services/klima_bakim.png"
+                },
+                {
+                    "name": "Kanallı Tip Klima İç Ünite",
+                    "price": 4200,
+                    "unit": "adet",
+                    "description": "Asma tavan arası gizli kanallı iç ünite montajı.",
+                    "conditions": "Menfez ve esnek kanal bağlantısı fiyata dahildir.",
+                    "image_url": "images/services/klima_bakim.png"
+                }
+            ]
+        }
+    ]
+}

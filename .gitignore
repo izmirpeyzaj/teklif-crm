@@ -1,0 +1,14 @@
+node_modules/
+.env
+*.zip
+*.log
+deploy_*/
+check_zip_*/
+verify_*/
+database.sqlite
+db_data.json
+.DS_Store
+dist/
+temp_deploy/
+server.js.bak
+*.exe

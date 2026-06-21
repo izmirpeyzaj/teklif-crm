@@ -1,0 +1,1833 @@
+:root {
+    /* Effix-Style Design System */
+    --primary: #1e293b;
+    --primary-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --accent: #3b82f6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+
+    --sidebar-width: 260px;
+    --topbar-height: 64px;
+
+    --text-main: #1e293b;
+}
+
+
+.hidden {
+    display: none !important;
+}
+
+.glass {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--text-main);
+    background: var(--primary-bg);
+    height: 100vh;
+    overflow: hidden;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* APP LAYOUT - REFACTORED FOR SIDEBAR */
+.app-shell {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background: var(--primary-bg);
+}
+
+.sidebar {
+    width: var(--sidebar-width);
+    background: white;
+    border-right: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 0;
+    z-index: 100;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.top-bar {
+    height: var(--topbar-height);
+    background: white;
+    border-bottom: 1px solid var(--border-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+}
+
+/* LEFT SIDEBAR - BUILDER */
+.builder-panel {
+    width: 450px;
+    /* Slightly wider for better inputs */
+    background: white;
+    border-right: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    z-index: 10;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    transition: width 0.3s ease;
+}
+
+/* MANAGEMENT MODE (FULL WIDTH) */
+.view-management .builder-panel {
+    width: 100%;
+}
+
+.view-management .preview-panel {
+    display: none;
+}
+
+.management-container {
+    max-width: 1200px;
+    /* Wider for grid */
+    margin: 0 auto;
+    padding: 30px;
+}
+
+/* Specific Layout for Kanban Tab when active */
+#tab-kanban:not(.hidden) {
+    display: flex !important;
+    height: 100%;
+    flex-direction: column;
+    padding: 0;
+}
+
+/* SIDEBAR COMPONENTS */
+.sidebar-logo {
+    padding: 0 24px 32px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sidebar-logo img {
+    height: 32px;
+}
+
+.sidebar-logo span {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    letter-spacing: -0.5px;
+}
+
+.sidebar-nav {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0 16px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.nav-item:hover {
+    background: #f1f5f9;
+    color: var(--primary);
+}
+
+.nav-item.active {
+    background: #eff6ff;
+    color: var(--accent);
+}
+
+.nav-item i {
+    font-size: 1.1rem;
+    width: 20px;
+    text-align: center;
+}
+
+.sidebar-footer {
+    padding: 16px;
+}
+
+.buddy-card {
+    background: #fdf2f8;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #fce7f3;
+}
+
+.buddy-card h4 {
+    margin: 0 0 4px 0;
+    font-size: 0.9rem;
+    color: #9d174d;
+}
+
+.buddy-card p {
+    font-size: 0.8rem;
+    color: #be185d;
+    margin-bottom: 12px;
+}
+
+/* KANBAN BOARD - EFFIX STYLE */
+.kanban-container {
+    padding: 24px 32px;
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    height: 100%;
+}
+
+.kanban-column {
+    min-width: 320px;
+    width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.kanban-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.column-open .kanban-header {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.column-received .kanban-header {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.column-declined .kanban-header {
+    background: #fef2f2;
+    color: #991b1b;
+}
+
+.column-accepted .kanban-header {
+    background: #f0fdf4;
+    color: #166534;
+}
+
+.kanban-cards {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+}
+
+.kanban-card {
+    background: white;
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: grab;
+}
+
+.kanban-card:hover {
+    box-shadow: var(--card-shadow-hover);
+    transform: translateY(-2px);
+}
+
+.card-id {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #1e293b;
+}
+
+.card-title {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 1rem;
+    text-decoration: none;
+}
+
+.card-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.card-footer {
+    margin-top: 4px;
+    padding-top: 12px;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-comments {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.card-view-btn {
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.tab-btn {
+    padding: 0 20px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    border-bottom: 4px solid transparent;
+    transition: all 0.2s;
+    height: 100%;
+    font-size: 0.9rem;
+}
+
+.tab-btn.active {
+    color: white;
+    border-bottom-color: var(--accent);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.tab-btn:hover:not(.active) {
+    color: white;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.builder-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.builder-content.hidden {
+    display: none;
+}
+
+/* UTILS */
+.divider {
+    margin: 20px 0;
+    border: 0;
+    border-top: 1px solid var(--border);
+}
+
+.hint {
+    font-size: 0.8rem;
+    color: var(--accent);
+    margin-bottom: 15px;
+}
+
+.empty-msg {
+    text-align: center;
+    color: #999;
+    font-size: 0.9rem;
+}
+
+.btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+    display: inline-block;
+    text-align: center;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: var(--accent);
+    color: white;
+    border: none;
+}
+
+.btn-primary:hover {
+    background: #2563eb;
+}
+
+.btn-secondary {
+    background: #f1f5f9;
+    color: var(--text-main);
+}
+
+.btn-secondary:hover {
+    background: #dfe4ea;
+}
+
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.8rem;
+}
+
+/* SERVICE MANAGER STYLES - GRID DESIGN */
+.service-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.service-item {
+    background: white;
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--card-shadow);
+}
+
+.service-item:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--card-shadow-hover);
+    border-color: var(--accent);
+}
+
+.service-item-img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.service-item-body {
+    padding: 15px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.service-item-info {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 5px;
+    line-height: 1.3;
+}
+
+.service-item-sub {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 15px;
+    flex: 1;
+}
+
+.service-actions {
+    display: flex;
+    gap: 8px;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 12px;
+}
+
+.service-actions button {
+    cursor: pointer;
+    border: 1px solid #eee;
+    background: #f8f9fa;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.service-actions button:hover {
+    background: white;
+    border-color: var(--accent);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-light);
+}
+
+.form-control {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.job-select-container {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-print {
+    width: 100%;
+    margin-top: 20px;
+    background: var(--primary);
+    color: white;
+    padding: 15px;
+    font-size: 1.1rem;
+}
+
+.cart-items {
+    margin-top: 20px;
+    border-top: 1px solid var(--border);
+    padding-top: 20px;
+}
+
+.cart-item {
+    background: var(--bg-light);
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cart-item-info h4 {
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.cart-item-info p {
+    font-size: 0.8rem;
+    color: var(--text-light);
+}
+
+.cart-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.qty-input {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    text-align: center;
+}
+
+.btn-remove {
+    color: #e74c3c;
+    background: none;
+    padding: 5px;
+    font-size: 1.2rem;
+}
+
+/* RIGHT PANEL - PREVIEW */
+.preview-panel {
+    flex: 1;
+    background: #444;
+    /* Darker for better contrast */
+    padding: 40px;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+}
+
+/* PROPOSAL PAPER */
+.proposal-paper {
+    background: white;
+    width: 210mm;
+    max-width: 100%;
+    /* Prevent horizontal overflow */
+    box-sizing: border-box;
+    /* Include padding in width */
+    min-height: 297mm;
+    /* A4 Ratio */
+    padding: 20mm 25mm;
+    /* Balanced padding for A4 */
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+    /* Stronger shadow for definition */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: #1a1a1a;
+    margin: 0 auto;
+}
+
+/* HEADER DESIGN */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 60px;
+}
+
+.logo-area {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: -1.2px;
+    text-transform: uppercase;
+}
+
+.company-details {
+    text-align: right;
+    font-size: 0.9rem;
+    color: #444;
+    line-height: 1.6;
+}
+
+.company-details strong {
+    color: var(--primary);
+    font-size: 1.1rem;
+    display: block;
+    margin-bottom: 4px;
+}
+
+/* CLIENT INFO SECTION */
+.client-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 50px;
+    padding-bottom: 25px;
+    border-bottom: 3px solid #f0f0f0;
+}
+
+.client-section h2 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 8px 0 0 0;
+}
+
+/* JOB LIST STYLING */
+.job-list {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+    margin-bottom: 50px;
+}
+
+.job-card {
+    display: flex;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.job-image {
+    width: 240px;
+    /* INCREASED from 140px */
+    height: 160px;
+    /* INCREASED from 100px */
+    object-fit: cover;
+}
+
+.job-details {
+    padding: 20px 30px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.job-name {
+    font-size: 1.4rem;
+    /* INCREASED */
+    font-weight: 900;
+    /* MUCH THICKER */
+    color: var(--primary);
+    margin-bottom: 8px;
+    line-height: 1.2;
+}
+
+.job-desc {
+    font-size: 1rem;
+    color: #555;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.job-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #f5f5f5;
+    padding-top: 12px;
+    margin-top: 5px;
+}
+
+.job-calculation {
+    font-size: 0.95rem;
+    color: #888;
+    font-weight: 500;
+}
+
+.job-total {
+    font-size: 1.4rem;
+    font-weight: 900;
+    color: var(--accent);
+}
+
+/* TOTALS SECTION */
+.totals-section {
+    align-self: flex-end;
+    width: 380px;
+    margin-top: auto;
+    background: #fdfdfd;
+    padding: 30px;
+    border-radius: 16px;
+    border: 1px solid #eee;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.01);
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 1.15rem;
+    color: #333;
+}
+
+.total-row.grand-total {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 4px solid var(--secondary);
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--primary);
+    margin-bottom: 0;
+}
+
+/* NOTES SECTION */
+#propNotes {
+    margin-top: 50px;
+    padding: 30px;
+    background: #fffdf5;
+    border-left: 6px solid #f1c40f;
+    font-size: 1.05rem;
+    color: #333;
+    border-radius: 10px;
+    line-height: 1.7;
+}
+
+/* REFERENCES SECTION */
+.reference-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.ref-card {
+    background: white;
+    border: 1px solid #f0f0f0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+}
+
+.ref-card img {
+    width: 100%;
+    height: 130px;
+    object-fit: cover;
+    display: block;
+}
+
+.ref-title {
+    padding: 15px;
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ref-cat {
+    padding: 0 15px 15px 15px;
+    font-size: 0.85rem;
+    color: #999;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+/* PRINT MEDIA */
+@media print {
+    @page {
+        margin: 0;
+        size: A4;
+    }
+
+    body {
+        background: white;
+        height: auto;
+        overflow: visible;
+    }
+
+    .app-container {
+        display: block;
+    }
+
+    .builder-panel {
+        display: none !important;
+    }
+
+    .preview-panel {
+        padding: 0;
+        overflow: visible;
+        background: white;
+        display: block;
+        width: 100% !important;
+    }
+
+    .proposal-paper {
+        box-shadow: none;
+        margin: 0;
+        width: 100% !important;
+        min-height: auto;
+        padding: 15mm 20mm;
+        border: none;
+    }
+
+    .job-card,
+    .ref-card,
+    .totals-section,
+    #propNotes {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+
+    .totals-section {
+        background-color: #fdfdfd !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    #propNotes {
+        background-color: #fffdf5 !important;
+        border-left: 6px solid #f1c40f !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+    }
+
+    .user-header {
+        display: none !important;
+    }
+}
+
+/* ================================
+   AUTHENTICATION STYLES
+   ================================ */
+
+/* Auth Modal */
+.auth-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.auth-modal.hidden {
+    display: none;
+}
+
+.auth-modal-content {
+    background: white;
+    width: 100%;
+    max-width: 400px;
+    border-radius: 16px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.auth-tabs {
+    display: flex;
+    margin-bottom: 25px;
+    border-bottom: 2px solid var(--border);
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: none;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-light);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+}
+
+.auth-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+}
+
+.auth-tab:hover:not(.active) {
+    color: var(--primary);
+}
+
+.auth-form.hidden {
+    display: none;
+}
+
+.auth-error {
+    color: #e74c3c;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    min-height: 20px;
+}
+
+/* User Header */
+.user-header {
+    background: var(--primary);
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.9rem;
+}
+
+.user-header.hidden {
+    display: none;
+}
+
+.user-header #userEmail {
+    opacity: 0.9;
+}
+
+/* User Header specific secondary buttons */
+.user-header .btn-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.user-header .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* COMPACT SERVICE SELECTOR GRID */
+.service-checklist-container {
+    max-height: 320px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 2px;
+}
+
+.service-check-item {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+    background: white;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    position: relative;
+    justify-content: center;
+    min-height: 54px;
+}
+
+.service-check-item:hover {
+    border-color: var(--accent);
+    background: #f9f9f9;
+    z-index: 2;
+}
+
+.service-check-item.active {
+    border-color: var(--accent);
+    background: #e8f5e9;
+    box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.service-check-item.active::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 900;
+}
+
+.service-check-info {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.service-check-name {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.82rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 2px;
+}
+
+.service-check-price {
+    font-size: 0.72rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.service-check-control {
+    display: none;
+    /* Removed checkbox for cleaner grid */
+}
+
+/* Scrollbar styling */
+.service-checklist-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.service-checklist-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.service-checklist-container::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 10px;
+}
+
+.search-container .form-control {
+    border-radius: 10px;
+    border: 1px solid #eee;
+    padding: 12px 15px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.validity-btn.active {
+    background: var(--primary) !important;
+    color: white !important;
+    border-color: var(--primary) !important;
+}
+
+/* KANBAN BOARD STYLES */
+.kanban-board {
+    display: flex;
+    overflow-x: auto;
+    padding: 20px;
+    gap: 20px;
+    height: calc(100vh - 200px);
+    align-items: flex-start;
+}
+
+.kanban-list {
+    flex: 0 0 320px;
+    background: #ebedf0;
+    border-radius: 8px;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.kanban-list-header {
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.kanban-list-title {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.95rem;
+}
+
+.kanban-cards {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    min-height: 100px;
+    /* Important for empty lists */
+    transition: background 0.2s;
+}
+
+.kanban-cards.drag-over {
+    background: rgba(46, 204, 113, 0.1);
+    border-radius: 4px;
+}
+
+.kanban-card {
+    background: white;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    border-left: 5px solid #ccc;
+    cursor: grab;
+    transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.kanban-card:active {
+    cursor: grabbing;
+}
+
+.kanban-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.kanban-card-urgency {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    color: white;
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.kanban-card-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+    padding-right: 25px;
+}
+
+.kanban-card-info {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 10px;
+}
+
+.kanban-card-proposals {
+    display: inline-block;
+    background: #f1f2f6;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    color: var(--accent);
+    margin-right: 5px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.kanban-card-proposals:hover {
+    background: white;
+    border-color: var(--accent);
+}
+
+.kanban-card-actions {
+    display: flex;
+    gap: 10px;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 8px;
+    margin-top: 5px;
+}
+
+.kanban-card-action {
+    text-decoration: none;
+    font-size: 1rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.kanban-card-action:hover {
+    opacity: 1;
+}
+
+.btn-add-card {
+    margin: 10px;
+    padding: 8px;
+    border: 2px dashed #ccc;
+    background: none;
+    border-radius: 6px;
+    color: #888;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-add-card:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.phone-btn {
+    background: #f1f5f9;
+    color: var(--primary);
+}
+
+.whatsapp-btn {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.email-btn {
+    background: #eff6ff;
+    color: #1e40af;
+}
+
+.comm-btn:hover {
+    transform: translateY(-2px);
+    filter: brightness(0.95);
+}
+
+/* Proposal History Items */
+.prop-hist-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    font-size: 0.8rem;
+}
+
+.prop-hist-code {
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.prop-hist-total {
+    font-weight: 600;
+}
+
+.prop-hist-date {
+    color: var(--text-muted);
+}
+
+/* List Management Ellipsis Menu */
+.kanban-list-menu-wrapper {
+    position: relative;
+}
+
+.list-menu-trigger {
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.list-menu-trigger:hover {
+    background: #f1f5f9;
+    color: var(--primary);
+}
+
+.list-action-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: white;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    z-index: 1000;
+    min-width: 140px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.list-action-menu button {
+    border: none;
+    background: none;
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 0.85rem;
+    color: var(--text-main);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.2s;
+}
+
+.list-action-menu button:hover {
+    background: #f8fafc;
+    color: var(--accent);
+}
+
+.list-action-menu button.delete-action {
+    color: #ef4444;
+}
+
+.list-action-menu button.delete-action:hover {
+    background: #fef2f2;
+}
+
+.kanban-header-title {
+    font-weight: 700;
+    color: var(--primary);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.kanban-header-title small {
+    font-weight: 400;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+/* Renaming/Deleting List logic in header */
+.kanban-header i:hover {
+    color: var(--accent);
+}
+
+/* Comments & Timeline */
+.comment-item {
+    background: white;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-light);
+    margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.comment-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.comment-text {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    line-height: 1.4;
+}
+
+/* Card Modal Enhancements */
+#cardModal .auth-modal-content {
+    max-width: 650px;
+}
+
+/* PRODUCT TABLE STYLING */
+.products-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+}
+
+.product-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.product-table thead th {
+    background: var(--primary);
+    color: white;
+    padding: 12px 10px;
+    font-weight: 600;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.product-table thead th:first-child {
+    border-radius: 8px 0 0 0;
+}
+
+.product-table thead th:last-child {
+    border-radius: 0 8px 0 0;
+    text-align: right;
+}
+
+.product-table tbody td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: middle;
+}
+
+.product-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.product-table tbody tr:hover {
+    background: #f1f5f9;
+}
+
+.product-table tbody td:last-child {
+    text-align: right;
+    font-weight: 700;
+    color: var(--accent);
+}
+
+.product-table .product-desc {
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+/* Grand Total Section Enhancement */
+.grand-total-section {
+    background: linear-gradient(135deg, var(--primary), #2c3e50) !important;
+    border: none !important;
+}
+
+.grand-total-section .total-row {
+    margin-bottom: 0;
+    border: none;
+}
+
+/* Product Checklist in Builder */
+#productChecklist .service-check-item,
+#productCartItems .cart-item {
+    border-left-color: #8b5cf6;
+}
+
+/* Print improvements - hide products section if empty */
+@media print {
+    .products-section:empty {
+        display: none !important;
+    }
+
+    #productsSection:has(#propProductList:empty) {
+        display: none !important;
+    }
+}
+
+/* =========================================
+   DASHBOARD STYLES
+   ========================================= */
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.kpi-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s;
+    border: 1px solid var(--border-light);
+}
+
+.kpi-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.kpi-icon {
+    width: 60px;
+    height: 60px;
+    min-width: 60px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+}
+
+.kpi-card.revenue .kpi-icon {
+    background: #eff6ff;
+    color: #3b82f6;
+}
+
+/* Blue */
+.kpi-card.pending .kpi-icon {
+    background: #fffbeb;
+    color: #f59e0b;
+}
+
+/* Amber */
+.kpi-card.winrate .kpi-icon {
+    background: #ecfdf5;
+    color: #10b981;
+}
+
+/* Emerald */
+.kpi-card.monthly .kpi-icon {
+    background: #f3e8ff;
+    color: #9333ea;
+}
+
+/* Purple */
+
+.kpi-info {
+    flex: 1;
+}
+
+.kpi-info h4 {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.kpi-info .kpi-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1.2;
+}
+
+.kpi-info small {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.chart-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-light);
+}
+
+.chart-header {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.chart-header h3 {
+    font-size: 1.1rem;
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.chart-body {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* ====================================
+   PRINT STYLES - Only show Proposal
+   ==================================== */
+@media print {
+
+    /* Hide everything by default */
+    body * {
+        visibility: hidden;
+    }
+
+    /* Show only the proposal paper and its contents */
+    #proposalPaper,
+    #proposalPaper * {
+        visibility: visible;
+    }
+
+    /* Position the proposal paper at the top-left */
+    #proposalPaper {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Hide sidebar, topbar, and other UI elements completely */
+    .sidebar,
+    .topbar,
+    .builder-tabs,
+    .btn-print,
+    .btn-secondary,
+    .builder-col-left,
+    #taxToggle,
+    label:has(#taxToggle) {
+        display: none !important;
+    }
+
+    /* Make sure the proposal is full width */
+    .builder-col-right,
+    .proposal-preview {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: none !important;
+    }
+
+    /* Remove background colors that waste ink */
+    body {
+        background: white !important;
+    }
+
+    .app-shell,
+    .main-content,
+    .main-scroll-area {
+        overflow: visible !important;
+        height: auto !important;
+    }
+}
+
+/* Right-align totals in proposal */
+
+/* Right-align totals in proposal */
+
+.totals-section .total-row {
+    display: flex;
+    justify-content: flex-end;
+    /* Changed from space-between to flex-end to push everything right */
+    gap: 20px;
+    /* Add gap between label and value */
+    align-items: center;
+    padding: 8px 0;
+}
+
+/* Force page break before major sections in print */
+@media print {
+    .hide-on-print {
+        display: none !important;
+    }
+
+    .editable-note {
+        border: none !important;
+        resize: none !important;
+        padding: 0 !important;
+        background: transparent !important;
+        overflow: hidden !important;
+        min-height: auto !important;
+        /* Allow height to adjust to content */
+        display: block;
+    }
+
+    /* Ensure major sections start on new page */
+    #productsSection,
+    #propServiceConditions,
+    #propNotes,
+    #propReferences {
+        /* Assuming references is the last div */
+        page-break-before: always;
+        break-before: page;
+        margin-top: 20px;
+    }
+
+    /* Exceptions: Sections that should NOT break */
+    #propJobList,
+    .grand-total-section,
+    .totals-section {
+        page-break-before: auto !important;
+        break-before: auto !important;
+    }
+}
+
+/* Ultra-Reduced Spacing for Service Conditions */
+.service-condition-item {
+    margin-bottom: 0px !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.service-condition-label {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--primary);
+    display: inline-block !important;
+    margin: 0 !important;
+    line-height: 1.2;
+}
+
+/* Editable Notes Styles */
+.editable-note {
+    display: block;
+    width: 100% !important;
+    min-height: 1.2em;
+    padding: 4px 0 !important;
+    margin: 0 !important;
+    border: 1px dashed transparent;
+    background-color: transparent;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    color: var(--text);
+    resize: none;
+    overflow: hidden;
+    transition: all 0.2s;
+    line-height: 1.4 !important;
+}
+
+/* Scoped styles for inline Service Conditions */
+.service-condition-item .editable-note {
+    flex: 1;
+    min-width: 200px;
+    width: auto !important;
+    padding: 0 !important;
+    line-height: 1.2 !important;
+}
+
+.editable-note:hover,
+.editable-note:focus {
+    border-color: var(--primary);
+    background-color: rgba(255, 255, 255, 0.5);
+    outline: none;
+}
+
+/* Print Area Visibility */
+@media print {
+    @page {
+        margin: 15mm;
+        /* Standard print margin */
+    }
+
+    #proposalPaper {
+        padding: 0 !important;
+        /* Let @page handle margins */
+        box-sizing: border-box;
+    }
+}
+
+/* 
+=========================
+   PHASE 2 STYLES
+=========================
+*/
+
+/* Buttons */
+.btn-secondary {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.btn-secondary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+/* AI Magic Button */
+#aiNotesBtn {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    box-shadow: 0 4px 6px -1px rgba(168, 85, 247, 0.3);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#aiNotesBtn:hover {
+    box-shadow: 0 6px 8px -1px rgba(168, 85, 247, 0.5);
+}
+
+/* Signature Pad */
+#signatureModal .modal-content {
+    background: #fff;
+    /* Ensure solid background for canvas visibility */
+}
+
+#signaturePad {
+    touch-action: none;
+    background: #fff;
+}
+
+#clientSignaturePlaceholder:hover {
+    background: #eef2ff !important;
+    border-color: var(--accent) !important;
+}
