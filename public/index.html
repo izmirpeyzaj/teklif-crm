@@ -934,8 +934,15 @@
                                 <span id="discountAmountDisplay" style="font-size:0.9rem;">0.00 ₺</span>
                             </div>
 
+                            <!-- KDV Row (taxToggle açıkken görünür) -->
+                            <div class="total-row" id="kdvRow"
+                                style="color:rgba(255,255,255,0.85); display:none; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
+                                <span style="font-size:0.9rem;">KDV (%20)</span>
+                                <span id="kdvAmountDisplay" style="font-size:0.9rem;">0.00 ₺</span>
+                            </div>
+
                             <div class="total-row grand-total" style="color:white;">
-                                <span style="font-size:1.1rem;">GENEL TOPLAM</span>
+                                <span id="grandTotalLabel" style="font-size:1.1rem;">GENEL TOPLAM</span>
                                 <span id="grandTotal" style="font-size:1.3rem; font-weight:800;">0.00 ₺</span>
                             </div>
                         </div>

@@ -137,6 +137,7 @@ const state = {
         customDate: null
     },
     projectName: '',
+    taxEnabled: true,
     version: '1',
     savedProposals: [],
     customers: [],
@@ -469,6 +470,15 @@ function init() {
             updateAutoVersion();
             updateProposalHeaders();
             if (state.cart.length) renderCart(); // müşteriye özel "son fiyat" ipucunu tazele
+        });
+    }
+
+    const taxEl = document.getElementById('taxToggle');
+    if (taxEl) {
+        state.taxEnabled = taxEl.checked;
+        taxEl.addEventListener('change', (e) => {
+            state.taxEnabled = e.target.checked;
+            updateGrandTotal();
         });
     }
 
@@ -1869,6 +1879,16 @@ window.saveCurrentProposal = function () {
     const serviceTotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const productTotal = state.productCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
 
+    // Gerçek genel toplam (indirim/zam + KDV dahil) — dashboard ve takip bunu kullanır
+    const _sub = serviceTotal + productTotal;
+    const _v = parseFloat(state.discountValue) || 0;
+    let _disc = 0, _sur = 0;
+    if (state.discountType === 'percentage' || state.discountType === 'iskonto') _disc = _sub * _v / 100;
+    else if (state.discountType === 'amount') _disc = _v;
+    else if (state.discountType === 'zam') _sur = _sub * _v / 100;
+    const _base = _sub - _disc + _sur;
+    const finalTotal = _base + (state.taxEnabled !== false ? _base * 0.20 : 0);
+
     const teklif = {
         id: Date.now(),
         createdAt: Date.now(), // Precise timestamp for sorting
@@ -1882,7 +1902,9 @@ window.saveCurrentProposal = function () {
         products: JSON.parse(JSON.stringify(state.productCart)), // Deep copy product cart
         serviceTotal: serviceTotal,
         productTotal: productTotal,
-        total: serviceTotal + productTotal,
+        total: finalTotal,
+        status: 'Beklemede',
+        taxEnabled: state.taxEnabled !== false,
         discountType: state.discountType || 'none',
         discountValue: state.discountValue || 0,
         notes: state.notes || '',
@@ -2052,13 +2074,22 @@ function renderSavedProposals(filter = '') {
         d.className = 'service-item';
         d.style.cursor = 'pointer';
         d.title = 'Teklifi Yükle';
+        let st = p.status || 'Beklemede';
+        if (!['Beklemede', 'Kabul', 'Red'].includes(st)) st = 'Beklemede';
+        const stColor = { Beklemede: '#d97706', Kabul: '#16a34a', Red: '#dc2626' }[st];
         d.innerHTML = `
             <div onclick="loadProposalById(${p.id})">
                 <div class="service-item-info">${p.code}</div>
                 <div class="service-item-sub">${p.customerName} - ${p.projectName} (${p.items ? p.items.length : 0} kalem)</div>
                 <div style="font-size:0.8rem; font-weight:700; color:var(--secondary); margin-top:2px;">${formatCurrency(p.total || 0)}</div>
             </div>
-            <div class="service-actions">
+            <div class="service-actions" style="display:flex; align-items:center; gap:8px;">
+                <select onclick="event.stopPropagation()" onchange="setProposalStatus(${p.id}, this.value)" title="Durum"
+                    style="font-size:.76rem; padding:4px 6px; border-radius:6px; font-weight:600; color:${stColor}; border:1px solid ${stColor}66; background:${stColor}14;">
+                    <option value="Beklemede" ${st === 'Beklemede' ? 'selected' : ''}>⏳ Beklemede</option>
+                    <option value="Kabul" ${st === 'Kabul' ? 'selected' : ''}>✅ Kabul</option>
+                    <option value="Red" ${st === 'Red' ? 'selected' : ''}>❌ Red</option>
+                </select>
                 <button onclick="deleteProposal(${p.id})" style="color:#e74c3c" title="Teklifi Sil">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                 </button>
@@ -2077,6 +2108,14 @@ window.loadProposalById = function (id) {
 window.deleteProposal = function (id) {
     if (!confirm('Silmek istediğinize emin misiniz?')) return;
     state.savedProposals = state.savedProposals.filter(p => p.id !== id);
+    localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+    renderSavedProposals();
+};
+
+window.setProposalStatus = function (id, val) {
+    const p = state.savedProposals.find(x => x.id === id);
+    if (!p) return;
+    p.status = val;
     localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
     renderSavedProposals();
 };
@@ -2676,6 +2715,9 @@ window.viewSavedProposal = function (id) {
         state.date = p.date;
         state.discountType = p.discountType || 'none';
         state.discountValue = p.discountValue || 0;
+        state.taxEnabled = p.taxEnabled !== false;
+        const taxElLoad = document.getElementById('taxToggle');
+        if (taxElLoad) taxElLoad.checked = state.taxEnabled;
 
         // Update form inputs to reflect loaded data
         if (els.customerInput) els.customerInput.value = p.customerName || '';
@@ -2990,8 +3032,27 @@ function updateGrandTotal() {
         }
     }
 
+    // KDV (taxToggle açıkken eklenir) — 'grand' KDV hariç ara toplamdır
+    const taxOn = state.taxEnabled !== false;
+    const kdv = taxOn ? grand * 0.20 : 0;
+    const finalTotal = grand + kdv;
+
+    const kdvRow = document.getElementById('kdvRow');
+    const kdvEl = document.getElementById('kdvAmountDisplay');
+    const grandLabelEl = document.getElementById('grandTotalLabel');
+    if (kdvRow) {
+        if (taxOn && grand > 0) {
+            kdvRow.style.display = 'flex';
+            if (kdvEl) kdvEl.textContent = kdv.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+            if (grandLabelEl) grandLabelEl.textContent = 'GENEL TOPLAM (KDV Dahil)';
+        } else {
+            kdvRow.style.display = 'none';
+            if (grandLabelEl) grandLabelEl.textContent = 'GENEL TOPLAM';
+        }
+    }
+
     const grandTotalEl = document.getElementById('grandTotal');
-    if (grandTotalEl) grandTotalEl.textContent = grand.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+    if (grandTotalEl) grandTotalEl.textContent = finalTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
 }
 
 // Toplu zam/iskonto kontrolünden state'i günceller
@@ -3176,13 +3237,8 @@ function renderDashboard() {
 
         if (isThisMonth) monthlyCount++;
 
-        const status = (p.status || 'Hazırlandı').toLowerCase();
-        let amount = 0;
-
-        // Parse amount "1.250,00 ₺" -> 1250.00
-        if (p.grandTotal) {
-            amount = parseFloat(p.grandTotal.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '')) || 0;
-        }
+        const status = (p.status || 'Beklemede').toLowerCase();
+        const amount = parseFloat(p.total) || 0;
 
         if (status.includes('kabul') || status.includes('onay') || status === 'accepted') {
             totalRevenue += amount;
@@ -3299,10 +3355,7 @@ function renderRevenueChart() {
                 const isAccepted = status.includes('kabul') || status.includes('onay');
                 return isAccepted && pd.getMonth() === m && pd.getFullYear() === y;
             })
-            .reduce((sum, p) => {
-                const amt = parseFloat(p.grandTotal.replace(/\./g, '').replace(',', '.').replace(/[^\d.]/g, '')) || 0;
-                return sum + amt;
-            }, 0);
+            .reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
 
         revenue.push(total);
     }
