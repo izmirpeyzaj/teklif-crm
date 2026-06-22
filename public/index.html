@@ -817,6 +817,22 @@
                             <button class="btn btn-primary" onclick="saveCompanySettings()"
                                 style="width:100%">Kaydet</button>
                         </div>
+
+                        <div class="management-container" style="margin-top:20px;">
+                            <h3>Veri Yedekleme</h3>
+                            <p class="hint" style="margin-bottom:14px;">Tüm verileriniz (hizmetler, müşteriler,
+                                teklifler, fiyat hafızası…) bu tarayıcıda saklanır. Düzenli yedek alın; olası bir çökme
+                                veya tarayıcı temizliğinde veriniz kaybolmasın.</p>
+                            <button class="btn btn-primary" onclick="exportBackup()"
+                                style="width:100%; margin-bottom:10px;">📥 Yedek Al (JSON indir)</button>
+                            <button class="btn btn-secondary"
+                                onclick="document.getElementById('importFile').click()" style="width:100%;">📤 Yedekten
+                                Geri Yükle</button>
+                            <input type="file" id="importFile" accept="application/json,.json"
+                                style="display:none" onchange="importBackup(this)">
+                            <p class="hint" style="margin-top:10px; margin-bottom:0; color:#dc2626;">⚠️ Geri yükleme
+                                mevcut tüm verinin üzerine yazar.</p>
+                        </div>
                     </div>
                 </aside>
 

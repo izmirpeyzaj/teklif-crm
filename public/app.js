@@ -1835,6 +1835,66 @@ window.shareProposalEmail = function () {
     window.location.href = mailto;
 };
 
+// ====================================
+// VERİ YEDEKLEME (dışa / içe aktarma)
+// ====================================
+function collectBackupKeys() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('teklif_')) keys.push(k);
+    }
+    return keys;
+}
+
+window.exportBackup = function () {
+    const data = {};
+    collectBackupKeys().forEach(k => { data[k] = localStorage.getItem(k); });
+    const payload = { app: 'teklif-crm', version: 1, exportedAt: new Date().toISOString(), data };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const d = new Date();
+    const p2 = n => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `teklif-yedek-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    alert(`✅ Yedek indirildi (${Object.keys(data).length} veri grubu).\nDosyayı güvenli bir yere (ör. e-posta/Drive) saklayın.`);
+};
+
+window.importBackup = function (input) {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        let payload;
+        try { payload = JSON.parse(e.target.result); }
+        catch (err) { alert('❌ Geçersiz dosya: JSON okunamadı.'); input.value = ''; return; }
+
+        const data = payload && payload.data;
+        if (!data || typeof data !== 'object' || payload.app !== 'teklif-crm') {
+            alert('❌ Bu dosya bir Teklif yedeği değil.'); input.value = ''; return;
+        }
+        const keys = Object.keys(data).filter(k => k.startsWith('teklif_'));
+        if (keys.length === 0) { alert('❌ Yedekte geri yüklenecek veri yok.'); input.value = ''; return; }
+
+        const when = payload.exportedAt ? new Date(payload.exportedAt).toLocaleString('tr-TR') : 'bilinmiyor';
+        if (!confirm(`Bu yedeği geri yüklemek MEVCUT TÜM verinin üzerine yazacak.\n\nYedek tarihi: ${when}\nVeri grubu: ${keys.length}\n\nDevam edilsin mi?`)) {
+            input.value = ''; return;
+        }
+        // Önce mevcut teklif_* anahtarlarını temizle, sonra yedeği yaz
+        collectBackupKeys().forEach(k => localStorage.removeItem(k));
+        keys.forEach(k => localStorage.setItem(k, data[k]));
+        alert('✅ Geri yükleme tamamlandı. Sayfa yenileniyor…');
+        location.reload();
+    };
+    reader.readAsText(file);
+};
+
 function updateKanbanFromProposal(proposal) {
     const list = state.kanban[0]; // Add to first list by default (Yeni)
     const existingIdx = state.kanban.reduce((found, l) => {
