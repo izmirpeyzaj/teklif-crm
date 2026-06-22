@@ -398,6 +398,22 @@
                                 <input type="checkbox" id="taxToggle" checked> KDV Hesapla
                             </label>
                         </div>
+
+                        <!-- Toplu Zam / İskonto -->
+                        <div style="margin-top:12px; display:flex; align-items:center; gap:8px; justify-content:flex-end; flex-wrap:wrap;">
+                            <label style="font-size:0.9rem; color:#475569;">Toplu uygula:</label>
+                            <select id="adjustType" onchange="updateAdjustment()" class="form-control"
+                                style="width:auto; padding:6px 8px;">
+                                <option value="none">Yok</option>
+                                <option value="iskonto">İskonto (−%)</option>
+                                <option value="zam">Zam (+%)</option>
+                            </select>
+                            <input type="number" id="adjustValue" min="0" step="1" value="0"
+                                oninput="updateAdjustment()" class="form-control" style="width:75px;"
+                                placeholder="%">
+                            <span style="color:#475569;">%</span>
+                        </div>
+
                         <button onclick="window.print()" class="btn btn-print">🖨️ PDF / Yazdır</button>
                         <button onclick="downloadProposalPdf(this)" class="btn btn-print"
                             style="width:100%; margin-top:10px; background:#2563eb; color:white; border:none;">📄 PDF
@@ -888,7 +904,7 @@
                             <!-- Discount Row (Hidden if no discount) -->
                             <div class="total-row" id="discountRow"
                                 style="color:rgba(255,255,255,0.8); display:none; margin-bottom:10px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px;">
-                                <span style="font-size:0.9rem;">İndirim</span>
+                                <span id="discountLabel" style="font-size:0.9rem;">İndirim</span>
                                 <span id="discountAmountDisplay" style="font-size:0.9rem;">0.00 ₺</span>
                             </div>
 

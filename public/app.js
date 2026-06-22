@@ -1586,6 +1586,10 @@ function renderCostPanel() {
         revenue += (parseFloat(item.price) || 0) * q;
         if (item.cost != null && item.cost !== '') { cost += (parseFloat(item.cost) || 0) * q; hasCost = true; }
     });
+    // Toplu zam/iskonto'yu (yüzde) hizmet gelirine yansıt ki kâr/marj doğru olsun
+    const av = parseFloat(state.discountValue) || 0;
+    if (state.discountType === 'zam') revenue = revenue * (1 + av / 100);
+    else if (state.discountType === 'iskonto' || state.discountType === 'percentage') revenue = revenue * (1 - av / 100);
     const profit = revenue - cost;
     const margin = revenue > 0 ? (profit / revenue * 100) : 0;
     const profitColor = profit >= 0 ? '#16a34a' : '#dc2626';
@@ -2519,11 +2523,13 @@ window.viewSavedProposal = function (id) {
         if (els.dateInput) els.dateInput.value = p.date || '';
         if (els.validityDateInput) els.validityDateInput.value = p.validityDate || '';
 
-        // Update Discount UI if elements exist (Assuming IDs based on state fields)
-        const discTypeEl = document.getElementById('discountType');
-        const discValEl = document.getElementById('discountValue');
-        if (discTypeEl) discTypeEl.value = p.discountType || 'none';
-        if (discValEl) discValEl.value = p.discountValue || 0;
+        // Update Adjustment UI (toplu zam/iskonto)
+        const adjTypeEl = document.getElementById('adjustType');
+        const adjValEl = document.getElementById('adjustValue');
+        let loadType = p.discountType || 'none';
+        if (loadType === 'percentage' || loadType === 'amount') loadType = 'iskonto'; // eski tipleri iskontoya eşle
+        if (adjTypeEl) adjTypeEl.value = (loadType === 'zam' || loadType === 'iskonto') ? loadType : 'none';
+        if (adjValEl) adjValEl.value = p.discountValue || 0;
 
         // Restore notes and conditions if available
         state.notes = p.notes || '';
@@ -2777,23 +2783,33 @@ function updateGrandTotal() {
     state.productCart.forEach(item => productTotal += item.price * item.qty);
 
     const subTotal = serviceTotal + productTotal;
-    let discountAmount = 0;
+    const v = parseFloat(state.discountValue) || 0;
+    let discountAmount = 0, surchargeAmount = 0, label = 'İndirim';
 
-    if (state.discountType === 'percentage') {
-        discountAmount = (subTotal * state.discountValue) / 100;
+    if (state.discountType === 'percentage' || state.discountType === 'iskonto') {
+        discountAmount = (subTotal * v) / 100;
+        label = `İskonto (%${v})`;
     } else if (state.discountType === 'amount') {
-        discountAmount = parseFloat(state.discountValue) || 0;
+        discountAmount = v;
+        label = 'İskonto';
+    } else if (state.discountType === 'zam') {
+        surchargeAmount = (subTotal * v) / 100;
+        label = `Zam (%${v})`;
     }
 
-    const grand = subTotal - discountAmount;
+    const adj = discountAmount || surchargeAmount;
+    const grand = subTotal - discountAmount + surchargeAmount;
+    const sign = surchargeAmount > 0 ? '+' : '-';
 
-    // Update discount display in preview if exists
+    // Update adjustment (zam/iskonto) display in preview if exists
     const discountRow = document.getElementById('discountRow');
     const discountValEl = document.getElementById('discountAmountDisplay');
+    const discountLabelEl = document.getElementById('discountLabel');
     if (discountRow) {
-        if (discountAmount > 0) {
-            discountRow.style.display = 'table-row';
-            if (discountValEl) discountValEl.textContent = '-' + discountAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+        if (adj > 0) {
+            discountRow.style.display = 'flex';
+            if (discountLabelEl) discountLabelEl.textContent = label;
+            if (discountValEl) discountValEl.textContent = sign + adj.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
         } else {
             discountRow.style.display = 'none';
         }
@@ -2802,6 +2818,18 @@ function updateGrandTotal() {
     const grandTotalEl = document.getElementById('grandTotal');
     if (grandTotalEl) grandTotalEl.textContent = grand.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
 }
+
+// Toplu zam/iskonto kontrolünden state'i günceller
+window.updateAdjustment = function () {
+    const typeEl = document.getElementById('adjustType');
+    const valEl = document.getElementById('adjustValue');
+    const type = typeEl ? typeEl.value : 'none';
+    const val = valEl ? (parseFloat(valEl.value) || 0) : 0;
+    state.discountType = (type === 'none' || val <= 0) ? 'none' : type;
+    state.discountValue = val;
+    updateGrandTotal();
+    renderCostPanel();
+};
 
 // Product CRUD for Products Tab
 function renderProductList() {
