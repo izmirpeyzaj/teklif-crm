@@ -3216,6 +3216,61 @@ function renderDashboard() {
 
     renderRevenueChart();
     renderStatusChart({ acceptedCount, pendingCount, rejectedCount });
+    renderFollowUps();
+}
+
+// Telefonu WhatsApp formatına çevir (90XXXXXXXXXX)
+function waNumber(phone) {
+    if (!phone) return '';
+    let n = String(phone).replace(/\D/g, '');
+    if (n.startsWith('0')) n = n.substring(1);
+    if (!n.startsWith('90') && n.length === 10) n = '90' + n;
+    return n;
+}
+
+// Sana hatırlatma: N+ gündür cevap bekleyen teklifler + tek tıkla iletişim
+function renderFollowUps() {
+    const box = document.getElementById('followUpList');
+    if (!box) return;
+    const THRESHOLD_DAYS = 3;
+    const now = Date.now();
+    const pend = (state.savedProposals || []).filter(p => {
+        const s = (p.status || '').toLowerCase();
+        const decided = s.includes('kabul') || s.includes('onay') || s === 'accepted' || s.includes('red') || s.includes('iptal') || s === 'declined';
+        if (decided) return false;
+        const ts = p.createdAt || new Date(p.date || now).getTime();
+        p._days = Math.floor((now - ts) / 86400000);
+        return p._days >= THRESHOLD_DAYS;
+    }).sort((a, b) => b._days - a._days);
+
+    if (pend.length === 0) {
+        box.innerHTML = '<p style="color:#16a34a; padding:14px; text-align:center; margin:0;">🎉 Şu an takip gerektiren teklif yok.</p>';
+        return;
+    }
+
+    box.innerHTML = pend.map(p => {
+        const c = (state.customers || []).find(x => x.name && p.customerName && x.name.toLowerCase().trim() === p.customerName.toLowerCase().trim());
+        const phone = c && c.phone ? c.phone : '';
+        const email = c && c.email ? c.email : '';
+        const wa = waNumber(phone);
+        const total = formatCurrency(p.total || ((p.serviceTotal || 0) + (p.productTotal || 0)));
+        const waMsg = encodeURIComponent(`Merhaba ${p.customerName}, ${p.projectName || ''} için ilettiğimiz teklifimizi değerlendirme fırsatınız oldu mu?`);
+        const mailBody = encodeURIComponent(`Sayın ${p.customerName},\n\n${p.projectName || ''} projesi için ilettiğimiz teklifimizle ilgili geri bildiriminizi rica ederiz.\n\nSaygılarımızla.`);
+        const btn = (href, label, color, off) => off
+            ? `<span style="opacity:.35; font-size:.78rem; padding:5px 8px;" title="İletişim bilgisi yok">${label}</span>`
+            : `<a href="${href}" target="_blank" style="text-decoration:none; font-size:.78rem; padding:5px 10px; border-radius:6px; background:${color}1a; color:${color}; border:1px solid ${color}55; white-space:nowrap;">${label}</a>`;
+        return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 6px; border-bottom:1px solid #eef2f7; flex-wrap:wrap;">
+            <div style="min-width:170px;">
+                <div style="font-weight:600;">${p.customerName || '—'}<span style="font-weight:400; color:#94a3b8;">${p.projectName ? ' · ' + p.projectName : ''}</span></div>
+                <div style="font-size:.78rem; color:#64748b;">${total} · <b style="color:#dc2626;">${p._days} gündür bekliyor</b></div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${btn(`tel:${phone}`, '📞 Ara', '#0ea5e9', !phone)}
+                ${btn(`https://wa.me/${wa}?text=${waMsg}`, '💬 WhatsApp', '#16a34a', !wa)}
+                ${btn(`mailto:${email}?subject=${encodeURIComponent('Teklif Hatırlatma')}&body=${mailBody}`, '✉️ Mail', '#6366f1', !email)}
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function renderRevenueChart() {
