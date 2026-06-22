@@ -32,6 +32,7 @@ const state = {
     references: localStorage.getItem('teklif_references') ? JSON.parse(localStorage.getItem('teklif_references')) : (typeof APP_DATA !== 'undefined' ? APP_DATA.references : []),
     usage: {}, // Track service usage: { jobId: count }
     productUsage: {}, // Track product usage
+    priceHistory: {}, // Önceki fiyat hafızası: { serviceId: { last:{price,date,customer}, byCustomer:{ key:{price,date,customer} } } }
     validity: {
         type: '30',
         customDate: null
@@ -140,7 +141,8 @@ const STORAGE_KEYS = {
     REFS: 'teklif_refs',
     SAVED_PROPOSALS: 'teklif_saved',
     CUSTOMERS: 'teklif_customers',
-    KANBAN: 'teklif_kanban'
+    KANBAN: 'teklif_kanban',
+    PRICE_HISTORY: 'teklif_price_history'
 };
 
 function loadData() {
@@ -197,6 +199,10 @@ function loadData() {
     // Usage
     const savedUsage = localStorage.getItem('teklif_usage');
     state.usage = savedUsage ? JSON.parse(savedUsage) : {};
+
+    // Price history (önceki fiyat hafızası)
+    const savedPriceHistory = localStorage.getItem(STORAGE_KEYS.PRICE_HISTORY);
+    state.priceHistory = savedPriceHistory ? JSON.parse(savedPriceHistory) : {};
 
     // Customers
     const savedCustomers = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
@@ -363,6 +369,7 @@ function init() {
             state.customerName = e.target.value;
             updateAutoVersion();
             updateProposalHeaders();
+            if (state.cart.length) renderCart(); // müşteriye özel "son fiyat" ipucunu tazele
         });
     }
 
@@ -1449,6 +1456,58 @@ const TYPE_BADGE = {
     kesif: { t: 'Keşif', c: '#0891b2' }
 };
 
+// ---- Önceki fiyat hafızası ----
+function relativeDate(ts) {
+    const d = Math.floor((Date.now() - ts) / 86400000);
+    if (d <= 0) return 'bugün';
+    if (d === 1) return 'dün';
+    if (d < 30) return d + ' gün önce';
+    const m = Math.floor(d / 30);
+    if (m < 12) return m + ' ay önce';
+    return Math.floor(d / 365) + ' yıl önce';
+}
+
+// Teklif kaydedildiğinde her hizmetin son birim fiyatını (genel + müşteri bazında) sakla.
+function recordPriceHistory() {
+    const now = Date.now();
+    const cust = (state.customerName || '').trim();
+    const key = cust.toLowerCase();
+    state.cart.forEach(item => {
+        const price = parseFloat(item.price) || 0;
+        if (!state.priceHistory[item.id]) state.priceHistory[item.id] = { last: null, byCustomer: {} };
+        const h = state.priceHistory[item.id];
+        h.last = { price, date: now, customer: cust };
+        if (key) h.byCustomer[key] = { price, date: now, customer: cust };
+    });
+    localStorage.setItem(STORAGE_KEYS.PRICE_HISTORY, JSON.stringify(state.priceHistory));
+}
+
+// Sepetteki bir kalem için "son fiyat" ipucu (varsa müşteriye özel, yoksa genel son).
+function priceHintHtml(item) {
+    const h = state.priceHistory[item.id];
+    if (!h) return '';
+    const key = (state.customerName || '').trim().toLowerCase();
+    let entry = null, scope = '';
+    if (key && h.byCustomer && h.byCustomer[key]) { entry = h.byCustomer[key]; scope = 'bu müşteri'; }
+    else if (h.last) { entry = h.last; scope = h.last.customer || ''; }
+    if (!entry) return '';
+    const same = Math.abs((parseFloat(item.price) || 0) - entry.price) < 0.001;
+    const scopeStr = scope ? ' · ' + scope : '';
+    const apply = same ? '' : `<button type="button" onclick="applyLastPrice('${item.id}', ${entry.price})" style="background:#e0f2fe; border:1px solid #0284c7; color:#0369a1; border-radius:12px; padding:1px 9px; font-size:.7rem; cursor:pointer;">uygula</button>`;
+    return `<div style="margin-top:5px; font-size:.72rem; color:#0369a1; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+        <span title="${new Date(entry.date).toLocaleDateString('tr-TR')}">🕘 Son fiyat: <b>${formatCurrency(entry.price)}</b> · ${relativeDate(entry.date)}${scopeStr}</span>${apply}
+    </div>`;
+}
+
+window.applyLastPrice = (id, price) => {
+    const item = state.cart.find(i => i.id === id);
+    if (!item) return;
+    item.price = parseFloat(price) || 0;
+    renderCart();
+    renderProposalItems();
+    renderCostPanel();
+};
+
 function renderCart() {
     els.cartContainer.innerHTML = '';
     if (state.cart.length === 0) {
@@ -1468,6 +1527,7 @@ function renderCart() {
                     <input type="number" value="${item.price}" class="price-input form-control" style="width:80px;" onchange="updateItemPrice('${item.id}', this.value)">
                     <span>₺ / ${item.unit}</span>
                 </div>
+                ${priceHintHtml(item)}
                 <div style="display:flex; align-items:center; gap:5px; margin-top:6px;">
                     <span style="font-size:.72rem; color:#94a3b8;">Maliyet:</span>
                     <input type="number" value="${item.cost != null && item.cost !== '' ? item.cost : ''}" placeholder="0" class="form-control" style="width:80px; padding:4px 8px; font-size:.85rem; border-color:#e2e8f0;" title="Birim maliyet — yalnızca size görünür, müşteriye gitmez" onchange="updateItemCost('${item.id}', this.value)">
@@ -1732,6 +1792,9 @@ window.saveCurrentProposal = function () {
 
     // Auto-update Kanban Project
     updateKanbanFromProposal(teklif);
+
+    // Önceki fiyat hafızasını güncelle (her hizmetin son birim fiyatı)
+    recordPriceHistory();
 
     alert('Teklif kaydedildi: ' + code);
 };
