@@ -1579,14 +1579,16 @@ function renderCostPanel() {
         panel.id = 'costAnalysisPanel';
         if (els.cartContainer.parentNode) els.cartContainer.parentNode.appendChild(panel);
     }
-    if (!state.cart.length) { panel.style.display = 'none'; return; }
+    if (!state.cart.length && !state.productCart.length) { panel.style.display = 'none'; return; }
     let revenue = 0, cost = 0, hasCost = false;
-    state.cart.forEach(item => {
+    const tally = item => {
         const q = parseFloat(item.qty) || 0;
         revenue += (parseFloat(item.price) || 0) * q;
         if (item.cost != null && item.cost !== '') { cost += (parseFloat(item.cost) || 0) * q; hasCost = true; }
-    });
-    // Toplu zam/iskonto'yu (yüzde) hizmet gelirine yansıt ki kâr/marj doğru olsun
+    };
+    state.cart.forEach(tally);        // hizmetler
+    state.productCart.forEach(tally); // ürünler
+    // Toplu zam/iskonto'yu (yüzde) toplam gelire yansıt ki kâr/marj doğru olsun
     const av = parseFloat(state.discountValue) || 0;
     if (state.discountType === 'zam') revenue = revenue * (1 + av / 100);
     else if (state.discountType === 'iskonto' || state.discountType === 'percentage') revenue = revenue * (1 - av / 100);
@@ -2695,7 +2697,14 @@ window.updateProductQty = (id, q) => {
 
 window.updateProductPrice = (id, p) => {
     const item = state.productCart.find(i => i.id === id);
-    if (item) { item.price = parseFloat(p) || 0; renderProductItems(); }
+    if (item) { item.price = parseFloat(p) || 0; renderProductItems(); renderCostPanel(); }
+};
+
+window.updateProductCost = (id, v) => {
+    const item = state.productCart.find(i => i.id === id);
+    if (!item) return;
+    item.cost = (v === '' ? null : (parseFloat(v) || 0));
+    renderCostPanel();
 };
 
 window.removeProductItem = (id) => {
@@ -2713,6 +2722,7 @@ function renderProductCart() {
     container.innerHTML = '';
     if (state.productCart.length === 0) {
         container.innerHTML = '<p class="empty-msg">Henüz ürün eklenmedi.</p>';
+        renderCostPanel();
         return;
     }
     state.productCart.forEach(item => {
@@ -2725,6 +2735,11 @@ function renderProductCart() {
                     <input type="number" value="${item.price}" class="price-input form-control" style="width:80px;" onchange="updateProductPrice('${item.id}', this.value)">
                     <span>₺ / ${item.unit}</span>
                 </div>
+                <div style="display:flex; align-items:center; gap:5px; margin-top:6px;">
+                    <span style="font-size:.72rem; color:#94a3b8;">Maliyet:</span>
+                    <input type="number" value="${item.cost != null && item.cost !== '' ? item.cost : ''}" placeholder="0" class="form-control" style="width:80px; padding:4px 8px; font-size:.85rem; border-color:#e2e8f0;" title="Birim maliyet — yalnızca size görünür, müşteriye gitmez" onchange="updateProductCost('${item.id}', this.value)">
+                    <span style="font-size:.72rem; color:#94a3b8;">₺ / ${item.unit}</span>
+                </div>
             </div>
             <div class="cart-controls">
                 <input type="number" value="${item.qty}" min="1" class="qty-input" onchange="updateProductQty('${item.id}', this.value)">
@@ -2735,6 +2750,7 @@ function renderProductCart() {
         `;
         container.appendChild(el);
     });
+    renderCostPanel();
 }
 
 function renderProductItems() {
