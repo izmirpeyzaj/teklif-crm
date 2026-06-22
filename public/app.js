@@ -14,6 +14,105 @@ const DEFAULT_TERMS = `GENEL HÜKÜMLER VE GARANTİ KOŞULLARI
 
 4. İşbu teklif, üzerinde belirtilen geçerlilik tarihine kadar geçerlidir.`;
 
+// ====================================
+// BULUT SENKRONU (çoklu cihaz erişimi)
+// Tüm localStorage anlık görüntüsü sunucuda saklanır; her cihaz açılışta çeker,
+// değişiklikte (debounce) geri yükler. Şifre kapısı = tek işletme = tek hesap.
+// ====================================
+const SYNC_TS_KEY = 'teklif_sync_updatedAt';
+let _lastSyncedCanon = null;
+
+function collectSyncData() {
+    const data = {};
+    for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('teklif_') === 0 && k !== SYNC_TS_KEY) data[k] = localStorage.getItem(k);
+    }
+    return data;
+}
+
+// Anahtar sırasından bağımsız karşılaştırma için kanonik biçim
+function canonicalSync(obj) {
+    return JSON.stringify(Object.keys(obj).sort().reduce((a, k) => { a[k] = obj[k]; return a; }, {}));
+}
+
+function setSyncStatus(s) {
+    let el = document.getElementById('syncBadge');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'syncBadge';
+        el.style.cssText = 'position:fixed; bottom:14px; right:14px; z-index:2000; font-size:.72rem; padding:5px 11px; border-radius:20px; box-shadow:0 2px 8px rgba(0,0,0,.15); background:#fff; border:1px solid #e2e8f0; transition:opacity .4s;';
+        const st = document.createElement('style');
+        st.textContent = '@media print { #syncBadge { display:none !important; } }';
+        document.head.appendChild(st);
+        if (document.body) document.body.appendChild(el);
+    }
+    const map = { saving: ['☁️ Kaydediliyor…', '#475569'], saved: ['☁️ Senkronize', '#16a34a'], error: ['⚠️ Çevrimdışı (yerelde)', '#dc2626'] };
+    const m = map[s] || map.saved;
+    el.textContent = m[0]; el.style.color = m[1]; el.style.opacity = '1';
+    if (s === 'saved') { clearTimeout(el._t); el._t = setTimeout(() => { el.style.opacity = '0.45'; }, 2500); }
+}
+
+// Değişiklikleri periyodik olarak yakalayıp buluta gönder (localStorage'a dokunmadan)
+function startSyncLoop() {
+    setInterval(pushSync, 3000);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) pushSync(); });
+    window.addEventListener('pagehide', () => { pushSync(); });
+}
+
+async function pushSync() {
+    const data = collectSyncData();
+    const canon = canonicalSync(data);
+    if (canon === _lastSyncedCanon) return; // değişmemiş
+    setSyncStatus('saving');
+    try {
+        const updatedAt = Date.now();
+        const res = await fetch('/api/sync', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data, updatedAt })
+        });
+        if (res.ok) { _lastSyncedCanon = canon; localStorage.setItem(SYNC_TS_KEY, String(updatedAt)); setSyncStatus('saved'); }
+        else setSyncStatus('error');
+    } catch (e) { setSyncStatus('error'); }
+}
+window.forceSyncNow = pushSync;
+
+async function pullSyncOnLoad() {
+    try {
+        const res = await fetch('/api/sync');
+        if (!res.ok) { setSyncStatus('error'); return false; }
+        const srv = await res.json();
+        const serverTs = parseInt(srv.updatedAt) || 0;
+        const localTs = parseInt(localStorage.getItem(SYNC_TS_KEY)) || 0;
+        const localHasData = Object.keys(collectSyncData()).length > 0;
+
+        if (srv.data && serverTs > localTs) {
+            return applyServerData(srv.data, serverTs); // sunucu daha yeni -> uygula + reload
+        }
+        if (!srv.data && localHasData) {
+            await pushSync(); // sunucu boş, yereli buluta tohumla
+            return false;
+        }
+        if (srv.data) { try { _lastSyncedCanon = canonicalSync(JSON.parse(srv.data)); } catch (e) { } }
+        setSyncStatus('saved');
+    } catch (e) { setSyncStatus('error'); }
+    return false;
+}
+
+function applyServerData(dataStr, serverTs) {
+    let obj;
+    try { obj = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr; }
+    catch (e) { return false; }
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.indexOf('teklif_') === 0 && k !== SYNC_TS_KEY) localStorage.removeItem(k);
+    }
+    Object.keys(obj).forEach(k => { if (k.indexOf('teklif_') === 0) localStorage.setItem(k, obj[k]); });
+    localStorage.setItem(SYNC_TS_KEY, String(serverTs));
+    location.reload();
+    return true;
+}
+
 const state = {
     customerName: '',
     date: new Date().toISOString().split('T')[0],
@@ -3216,7 +3315,14 @@ function renderStatusChart(kpis) {
     });
 }
 
-document.addEventListener('DOMContentLoaded', init);
+async function boot() {
+    let reloading = false;
+    try { reloading = await pullSyncOnLoad(); } catch (e) { /* çevrimdışı: yerelle devam */ }
+    if (reloading) return; // sunucu daha yeniydi -> sayfa yenileniyor
+    init();
+    startSyncLoop();
+}
+document.addEventListener('DOMContentLoaded', boot);
 
 // ====================================
 // SERVER-SIDE PDF (Puppeteer) + EMAIL

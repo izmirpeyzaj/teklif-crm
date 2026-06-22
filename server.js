@@ -75,6 +75,7 @@ try {
     const proposalRoutes = require('./routes/proposals');
     const kanbanRoutes = require('./routes/kanban');
     const pdfRoutes = require('./routes/pdf');
+    const syncRoutes = require('./routes/sync');
 
     // Initialize Gemini
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSy_PLACEHOLDER_KEY');
@@ -170,6 +171,7 @@ try {
     app.use('/api/proposals', proposalRoutes);
     app.use('/api/kanban', kanbanRoutes);
     app.use('/api/pdf', pdfRoutes);
+    app.use('/api/sync', syncRoutes);
 
 } catch (err) {
     console.error("Initialization error:", err);

@@ -50,6 +50,13 @@ db.exec(`
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
     );
+
+    -- Tüm uygulama verisinin bulut anlık görüntüsü (tek işletme = tek satır id=1)
+    CREATE TABLE IF NOT EXISTS sync_store (
+        id INTEGER PRIMARY KEY,
+        data TEXT,
+        updated_at INTEGER
+    );
 `);
 
 console.log('Database initialized successfully.');
