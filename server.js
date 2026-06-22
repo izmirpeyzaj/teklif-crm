@@ -11,6 +11,10 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 // Larger limit: captured proposal HTML can embed a base64 logo / images.
 app.use(express.json({ limit: '15mb' }));
+
+// Şifre kapısı — statik dosyalardan ÖNCE, böylece tüm site (sayfa + API) korunur.
+require('./gate')(app);
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 let initError = null;
