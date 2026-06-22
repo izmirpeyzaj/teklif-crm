@@ -26,7 +26,7 @@ const APP_DATA = {
             description: 'Yürüyüş yolu ve teras uygulamaları için birinci kalite doğal taş (andezit, traverten vb.) temini.',
             unit: 'm²',
             price: 850,
-            image: 'images/services/parke-yol.png',
+            image: 'images/services/dogal-tas-malzeme.jpg',
             type: 'malzeme',
             suggest: ['lab-tas', 'nak-1'],
             conditions: 'Belirtilen birim fiyat yalnızca malzeme temin bedelini kapsar; nakliye ve döşeme işçiliği dâhil değildir.',
@@ -110,7 +110,7 @@ const APP_DATA = {
             description: 'Otomatik sulama destekli yaşayan duvar sistemleri kurulumu.',
             unit: 'm²',
             price: 4500,
-            image: 'images/services/peyzaj_bakim.png',
+            image: 'images/services/dikey-bahce.jpg',
             conditions: 'Kurulan dikey bahçe ünitesinin 1 yıl bitki değişim garantisi vardır.',
             taxRate: 20
         },
@@ -160,7 +160,7 @@ const APP_DATA = {
             description: 'Sulama sistemine entegre sıvı gübre dozajlama pompası kurulumu.',
             unit: 'Sistem',
             price: 8500,
-            image: 'images/services/peyzaj_ilaclama.png',
+            image: 'images/services/gubreleme-unitesi.jpg',
             conditions: 'Dozaj pompası ve ilk dolum tankı dahildir.',
             taxRate: 20
         },
@@ -170,7 +170,7 @@ const APP_DATA = {
             description: 'Yüksek kaliteli, UV dayanımlı yapay çim halı montajı.',
             unit: 'm²',
             price: 650,
-            image: 'images/services/rulo-cim.png',
+            image: 'images/services/sentetik-cim.jpg',
             conditions: 'Alt zemin mıcır dolgusu ve kompaktör sıkıştırması dahildir.',
             taxRate: 20
         },
@@ -200,7 +200,7 @@ const APP_DATA = {
             description: 'Büyük ağaçların sökülerek başka bir alana taşınması.',
             unit: 'Saat',
             price: 3500,
-            image: 'images/services/agac-dikimi.png',
+            image: 'images/services/agac-nakli-vincli.jpg',
             conditions: 'Vinç kiralama bedeli 4 saati aşan işlemlerde ek ücrete tabidir.',
             taxRate: 20
         },
@@ -310,7 +310,7 @@ const APP_DATA = {
             description: 'Çim ve bitki dikimine uygun, elenmiş organik bahçe üst toprağı temini.',
             unit: 'm³',
             price: 900,
-            image: 'images/services/peyzaj_hafriyat.png',
+            image: 'images/services/bahce-topragi.jpg',
             type: 'malzeme',
             suggest: ['lab-toprak', 'nak-1'],
             conditions: 'Belirtilen birim fiyat yalnızca malzeme temin bedelini kapsar; nakliye ve serme/tesviye işçiliği dâhil değildir.',
@@ -322,7 +322,7 @@ const APP_DATA = {
             description: 'Projeye uygun süs bitkisi, çalı ve ağaç fidanı temini.',
             unit: 'Adet',
             price: 0,
-            image: 'images/services/agac-dikimi.png',
+            image: 'images/services/bitki-fidan-temin.jpg',
             type: 'malzeme',
             suggest: ['lab-bitki', 'nak-1'],
             conditions: 'Bitki bedeli tür ve boyuta göre belirlenir. Belirtilen fiyat yalnızca malzeme temin bedelini kapsar; nakliye ve dikim işçiliği dâhil değildir.',
@@ -334,7 +334,7 @@ const APP_DATA = {
             description: 'Zemin hazırlığı, tesviye ve hazır rulo çimin profesyonel serimi (yalnızca işçilik).',
             unit: 'm²',
             price: 120,
-            image: 'images/services/rulo-cim.png',
+            image: 'images/services/cim-serme-iscilik.jpg',
             type: 'iscilik',
             conditions: 'Yalnızca işçilik bedelidir; malzeme (rulo çim) ve nakliye hariçtir.',
             taxRate: 20
@@ -378,7 +378,7 @@ const APP_DATA = {
             description: 'Malzemelerin uygulama alanına nakliyesi ve sevkiyatı.',
             unit: 'Sefer',
             price: 2500,
-            image: 'images/services/peyzaj_hafriyat.png',
+            image: 'images/services/nakliye-sevkiyat.jpg',
             type: 'nakliye',
             conditions: 'Nakliye bedeli mesafe, tonaj ve araç tipine göre değişiklik gösterebilir.',
             taxRate: 20
@@ -389,7 +389,7 @@ const APP_DATA = {
             description: 'Uygulama alanında yerinde keşif, ölçüm ve ihtiyaç analizi (şehir içi).',
             unit: 'Adet',
             price: 2500,
-            image: 'images/services/ic_mimarlik_render.png',
+            image: 'images/services/kesif-sehir-ici.jpg',
             type: 'kesif',
             conditions: 'Yerinde keşif, ölçüm ve ihtiyaç analizi hizmetini kapsar.',
             taxRate: 20
@@ -400,7 +400,7 @@ const APP_DATA = {
             description: 'Uygulama alanında yerinde keşif, ölçüm ve ihtiyaç analizi (şehir dışı).',
             unit: 'Adet',
             price: 5000,
-            image: 'images/services/ic_mimarlik_render.png',
+            image: 'images/services/kesif-sehir-disi.jpg',
             type: 'kesif',
             conditions: 'Yerinde keşif, ölçüm ve ihtiyaç analizinin yanı sıra şehir dışı ulaşım giderlerini kapsar.',
             taxRate: 20
@@ -558,21 +558,21 @@ const APP_DATA = {
             title: 'Lounge & Ateş Alanı',
             category: 'Ticari',
             tags: ['j12', 'j14', 'j10', 'j3'],
-            image: 'images/references/ref_outdoor_kitchen_1769570946772.png'
+            image: 'images/references/ref_lounge_ates.jpg'
         },
         {
             id: 'r19',
             title: 'AVM Meydan Düzenlemesi',
             category: 'Ticari',
             tags: ['j3', 'j4', 'j10', 'j30', 'j28'],
-            image: 'images/references/ref_city_park_1769570766111.png'
+            image: 'images/references/ref_avm_meydan.jpg'
         },
         {
             id: 'r20',
             title: 'Kış Bahçesi Bitkilendirme',
             category: 'Konut',
             tags: ['j22', 'j25', 'j8', 'j6'],
-            image: 'images/references/ref_terrace_garden_1769570871712.png'
+            image: 'images/references/ref_kis_bahcesi.jpg'
         }
     ],
     products: [
