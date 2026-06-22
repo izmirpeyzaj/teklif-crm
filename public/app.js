@@ -3,6 +3,17 @@
 // ====================================
 const USE_API = false; // Mock mode = false (using localStorage)
 
+// Tekliflerde varsayılan olarak görünen resmi genel hükümler / garanti metni.
+const DEFAULT_TERMS = `GENEL HÜKÜMLER VE GARANTİ KOŞULLARI
+
+1. Firmamızca temin edilen malzemeler ve uygulanan işçilik, teslim tarihinden itibaren 1 (bir) yıl süreyle garanti kapsamındadır.
+
+2. Bitki, fidan, çim ve benzeri canlı materyaller; iklim, sulama ve bakım koşullarına bağlı doğal etkenler nedeniyle garanti kapsamı dışındadır. Firmamızın periyodik bakım hizmetinden yararlanılması hâlinde, bakım sözleşmesi süresince canlı materyaller de garanti kapsamına dâhil edilir.
+
+3. Malzeme, nakliye ve işçilik bedelleri ayrı kalemler hâlinde gösterilmiştir. Aksi yazılı olarak belirtilmedikçe malzeme bedeline nakliye ve işçilik dâhil değildir.
+
+4. İşbu teklif, üzerinde belirtilen geçerlilik tarihine kadar geçerlidir.`;
+
 const state = {
     customerName: '',
     date: new Date().toISOString().split('T')[0],
@@ -1408,7 +1419,7 @@ window.updateQty = (id, q) => {
 
 window.updateItemPrice = (id, p) => {
     const item = state.cart.find(i => i.id === id);
-    if (item) { item.price = parseFloat(p) || 0; renderProposalItems(); }
+    if (item) { item.price = parseFloat(p) || 0; renderProposalItems(); renderCostPanel(); }
 };
 
 window.removeItem = (id) => {
@@ -1431,21 +1442,36 @@ window.updateProposalNotes = (val) => {
     state.notes = val;
 };
 
+const TYPE_BADGE = {
+    malzeme: { t: 'Malzeme', c: '#2563eb' },
+    iscilik: { t: 'İşçilik', c: '#d97706' },
+    nakliye: { t: 'Nakliye', c: '#7c3aed' },
+    kesif: { t: 'Keşif', c: '#0891b2' }
+};
+
 function renderCart() {
     els.cartContainer.innerHTML = '';
     if (state.cart.length === 0) {
         els.cartContainer.innerHTML = '<p class="empty-msg">Henüz hizmet eklenmedi.</p>';
+        renderCostPanel();
         return;
     }
     state.cart.forEach(item => {
         const el = document.createElement('div');
         el.className = 'cart-item';
+        const b = TYPE_BADGE[item.type];
+        const badge = b ? `<span style="font-size:.6rem;font-weight:700;color:#fff;background:${b.c};padding:1px 6px;border-radius:4px;margin-right:5px;vertical-align:middle;">${b.t}</span>` : '';
         el.innerHTML = `
             <div class="cart-item-info">
-                <h4>${item.name}</h4>
+                <h4>${badge}${item.name}</h4>
                 <div style="display:flex; align-items:center; gap:5px; margin-top:5px;">
                     <input type="number" value="${item.price}" class="price-input form-control" style="width:80px;" onchange="updateItemPrice('${item.id}', this.value)">
                     <span>₺ / ${item.unit}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:5px; margin-top:6px;">
+                    <span style="font-size:.72rem; color:#94a3b8;">Maliyet:</span>
+                    <input type="number" value="${item.cost != null && item.cost !== '' ? item.cost : ''}" placeholder="0" class="form-control" style="width:80px; padding:4px 8px; font-size:.85rem; border-color:#e2e8f0;" title="Birim maliyet — yalnızca size görünür, müşteriye gitmez" onchange="updateItemCost('${item.id}', this.value)">
+                    <span style="font-size:.72rem; color:#94a3b8;">₺ / ${item.unit}</span>
                 </div>
             </div>
             <div class="cart-controls">
@@ -1457,7 +1483,75 @@ function renderCart() {
         `;
         els.cartContainer.appendChild(el);
     });
+    renderSuggestions();
+    renderCostPanel();
 }
+
+// Malzeme eklendiğinde, o malzemeye bağlı işçilik/nakliye kalemlerini öneri olarak göster.
+function renderSuggestions() {
+    const inCart = new Set(state.cart.map(c => c.id));
+    const suggestedIds = [];
+    state.cart.forEach(item => {
+        const src = state.jobs.find(j => j.id === item.id);
+        if (src && Array.isArray(src.suggest)) {
+            src.suggest.forEach(sid => {
+                if (!inCart.has(sid) && !suggestedIds.includes(sid)) suggestedIds.push(sid);
+            });
+        }
+    });
+    if (suggestedIds.length === 0) return;
+    const chips = suggestedIds.map(sid => {
+        const j = state.jobs.find(x => x.id === sid);
+        if (!j) return '';
+        return `<button type="button" onclick="toggleService('${sid}')" style="background:#eef6ff; border:1px dashed #2563eb; color:#1d4ed8; border-radius:20px; padding:5px 12px; font-size:.8rem; cursor:pointer; margin:3px;">+ ${j.name}</button>`;
+    }).join('');
+    const bar = document.createElement('div');
+    bar.style.cssText = 'margin-top:12px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;';
+    bar.innerHTML = `<div style="font-size:.78rem; color:#475569; margin-bottom:6px;">💡 Eklediğiniz malzeme(ler) için önerilen kalemler — ayrı satır olarak eklenir:</div>${chips}`;
+    els.cartContainer.appendChild(bar);
+}
+
+// Kâr/maliyet paneli — yalnızca builder tarafında, MÜŞTERİ GÖRMEZ (PDF ve baskıda yoktur).
+function renderCostPanel() {
+    let panel = document.getElementById('costAnalysisPanel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'costAnalysisPanel';
+        if (els.cartContainer.parentNode) els.cartContainer.parentNode.appendChild(panel);
+    }
+    if (!state.cart.length) { panel.style.display = 'none'; return; }
+    let revenue = 0, cost = 0, hasCost = false;
+    state.cart.forEach(item => {
+        const q = parseFloat(item.qty) || 0;
+        revenue += (parseFloat(item.price) || 0) * q;
+        if (item.cost != null && item.cost !== '') { cost += (parseFloat(item.cost) || 0) * q; hasCost = true; }
+    });
+    const profit = revenue - cost;
+    const margin = revenue > 0 ? (profit / revenue * 100) : 0;
+    const profitColor = profit >= 0 ? '#16a34a' : '#dc2626';
+    panel.style.display = 'block';
+    panel.style.cssText = 'margin-top:16px; padding:14px 16px; background:#0f172a; border-radius:10px; color:#e2e8f0;';
+    panel.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <strong style="font-size:.95rem;">📊 Kâr Analizi</strong>
+            <span style="font-size:.66rem; background:#334155; color:#cbd5e1; padding:2px 8px; border-radius:10px;">🔒 yalnızca size özel</span>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:.85rem;">
+            <div>Toplam Satış</div><div style="text-align:right; font-weight:600;">${formatCurrency(revenue)}</div>
+            <div>Toplam Maliyet</div><div style="text-align:right; font-weight:600;">${hasCost ? formatCurrency(cost) : '—'}</div>
+            <div style="border-top:1px solid #334155; padding-top:6px;">Kâr</div><div style="border-top:1px solid #334155; padding-top:6px; text-align:right; font-weight:700; color:${profitColor};">${formatCurrency(profit)}</div>
+            <div>Kâr Marjı</div><div style="text-align:right; font-weight:700; color:${profitColor};">% ${margin.toFixed(1)}</div>
+        </div>
+        ${hasCost ? '' : '<div style="font-size:.72rem; color:#94a3b8; margin-top:8px;">Her kaleme maliyet girince kâr otomatik hesaplanır.</div>'}
+    `;
+}
+
+window.updateItemCost = (id, v) => {
+    const item = state.cart.find(i => i.id === id);
+    if (!item) return;
+    item.cost = (v === '' ? null : (parseFloat(v) || 0));
+    renderCostPanel();
+};
 
 function renderProposalItems() {
     els.propJobList.innerHTML = '';
@@ -1489,9 +1583,9 @@ function renderProposalItems() {
     // Update grand total (includes products)
     updateGrandTotal();
 
-    // Initialize notes from company default if not set
-    if (typeof state.notes === 'undefined' && state.company && state.company.notes) {
-        state.notes = state.company.notes;
+    // Initialize notes from company default or the formal terms if not set
+    if (typeof state.notes === 'undefined') {
+        state.notes = (state.company && state.company.notes) ? state.company.notes : DEFAULT_TERMS;
     }
 
     // Render Service Conditions (Editable)

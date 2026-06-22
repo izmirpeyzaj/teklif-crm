@@ -22,12 +22,14 @@ const APP_DATA = {
         },
         {
             id: 'j3',
-            name: 'Doğal Taş & Zemin Döşeme',
-            description: 'Yürüyüş yolları ve teraslar için yüksek kaliteli doğal taş döşeme işçiliği.',
+            name: 'Doğal Taş (Andezit/Traverten) Temini',
+            description: 'Yürüyüş yolu ve teras uygulamaları için birinci kalite doğal taş (andezit, traverten vb.) temini.',
             unit: 'm²',
-            price: 1250,
+            price: 850,
             image: 'images/services/parke-yol.png',
-            conditions: 'Taşların nakliyesi ve zemin hazırlığı (kırım/hafriyat) fiyata dahil değildir.',
+            type: 'malzeme',
+            suggest: ['lab-tas', 'nak-1'],
+            conditions: 'Belirtilen birim fiyat yalnızca malzeme temin bedelini kapsar; nakliye ve döşeme işçiliği dâhil değildir.',
             taxRate: 20
         },
         {
@@ -62,12 +64,14 @@ const APP_DATA = {
         },
         {
             id: 'j7',
-            name: 'Rulo Çim Serimi',
-            description: 'Hazır rulo çim temini, zemin hazırlığı ve profesyonel serim hizmeti.',
+            name: 'Hazır Rulo Çim Temini',
+            description: 'Anında yeşil görünüm sağlayan, sertifikalı hazır rulo çim temini.',
             unit: 'm²',
-            price: 480,
+            price: 220,
             image: 'images/services/rulo-cim.png',
-            conditions: 'Zemin hazırlığı fiyata dahil olup, toprak takviyesi gerekirse ayrıca m³ üzerinden hesaplanır.',
+            type: 'malzeme',
+            suggest: ['lab-cim', 'nak-1'],
+            conditions: 'Belirtilen birim fiyat yalnızca rulo çim temin bedelini kapsar; nakliye ve serim işçiliği dâhil değildir.',
             taxRate: 20
         },
         {
@@ -298,6 +302,107 @@ const APP_DATA = {
             price: 180,
             image: 'assets/jobs/paving.png',
             conditions: 'Özel taş koruyucu vernik uygulaması istenirse m² başı extra ücretlendirilir.',
+            taxRate: 20
+        },
+        {
+            id: 'mlz-toprak',
+            name: 'Bahçe Üst Toprağı (Elenmiş)',
+            description: 'Çim ve bitki dikimine uygun, elenmiş organik bahçe üst toprağı temini.',
+            unit: 'm³',
+            price: 900,
+            image: 'images/services/peyzaj_hafriyat.png',
+            type: 'malzeme',
+            suggest: ['lab-toprak', 'nak-1'],
+            conditions: 'Belirtilen birim fiyat yalnızca malzeme temin bedelini kapsar; nakliye ve serme/tesviye işçiliği dâhil değildir.',
+            taxRate: 20
+        },
+        {
+            id: 'mlz-bitki',
+            name: 'Bitki ve Fidan Temini',
+            description: 'Projeye uygun süs bitkisi, çalı ve ağaç fidanı temini.',
+            unit: 'Adet',
+            price: 0,
+            image: 'images/services/agac-dikimi.png',
+            type: 'malzeme',
+            suggest: ['lab-bitki', 'nak-1'],
+            conditions: 'Bitki bedeli tür ve boyuta göre belirlenir. Belirtilen fiyat yalnızca malzeme temin bedelini kapsar; nakliye ve dikim işçiliği dâhil değildir.',
+            taxRate: 20
+        },
+        {
+            id: 'lab-cim',
+            name: 'Rulo Çim Serme İşçiliği',
+            description: 'Zemin hazırlığı, tesviye ve hazır rulo çimin profesyonel serimi (yalnızca işçilik).',
+            unit: 'm²',
+            price: 120,
+            image: 'images/services/rulo-cim.png',
+            type: 'iscilik',
+            conditions: 'Yalnızca işçilik bedelidir; malzeme (rulo çim) ve nakliye hariçtir.',
+            taxRate: 20
+        },
+        {
+            id: 'lab-tas',
+            name: 'Doğal Taş Döşeme İşçiliği',
+            description: 'Zemin hazırlığı ve doğal taşın harç/kum üzerine döşeme işçiliği (yalnızca işçilik).',
+            unit: 'm²',
+            price: 450,
+            image: 'images/services/parke-yol.png',
+            type: 'iscilik',
+            conditions: 'Yalnızca işçilik bedelidir; malzeme (taş) ve nakliye hariçtir.',
+            taxRate: 20
+        },
+        {
+            id: 'lab-toprak',
+            name: 'Toprak Serme ve Tesviye İşçiliği',
+            description: 'Getirilen bahçe toprağının serilmesi, kotlama ve tesviye işçiliği (yalnızca işçilik).',
+            unit: 'm³',
+            price: 300,
+            image: 'images/services/peyzaj_hafriyat.png',
+            type: 'iscilik',
+            conditions: 'Yalnızca işçilik bedelidir; malzeme (toprak) ve nakliye hariçtir.',
+            taxRate: 20
+        },
+        {
+            id: 'lab-bitki',
+            name: 'Bitki Dikim İşçiliği',
+            description: 'Çukur açımı, dikim ve ilk can suyu uygulaması (yalnızca işçilik).',
+            unit: 'Adet',
+            price: 150,
+            image: 'images/services/agac-dikimi.png',
+            type: 'iscilik',
+            conditions: 'Yalnızca işçilik bedelidir; malzeme (bitki) ve nakliye hariçtir.',
+            taxRate: 20
+        },
+        {
+            id: 'nak-1',
+            name: 'Malzeme Nakliyesi (Sevkiyat)',
+            description: 'Malzemelerin uygulama alanına nakliyesi ve sevkiyatı.',
+            unit: 'Sefer',
+            price: 2500,
+            image: 'images/services/peyzaj_hafriyat.png',
+            type: 'nakliye',
+            conditions: 'Nakliye bedeli mesafe, tonaj ve araç tipine göre değişiklik gösterebilir.',
+            taxRate: 20
+        },
+        {
+            id: 'kesif-ici',
+            name: 'Şehir İçi Keşif ve Ölçüm',
+            description: 'Uygulama alanında yerinde keşif, ölçüm ve ihtiyaç analizi (şehir içi).',
+            unit: 'Adet',
+            price: 2500,
+            image: 'images/services/ic_mimarlik_render.png',
+            type: 'kesif',
+            conditions: 'Yerinde keşif, ölçüm ve ihtiyaç analizi hizmetini kapsar.',
+            taxRate: 20
+        },
+        {
+            id: 'kesif-disi',
+            name: 'Şehir Dışı Keşif ve Ölçüm',
+            description: 'Uygulama alanında yerinde keşif, ölçüm ve ihtiyaç analizi (şehir dışı).',
+            unit: 'Adet',
+            price: 5000,
+            image: 'images/services/ic_mimarlik_render.png',
+            type: 'kesif',
+            conditions: 'Yerinde keşif, ölçüm ve ihtiyaç analizinin yanı sıra şehir dışı ulaşım giderlerini kapsar.',
             taxRate: 20
         }
     ],
