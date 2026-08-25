@@ -188,8 +188,29 @@ async function sendVerificationEmail({ to, link }) {
     });
 }
 
+/**
+ * Ekip daveti.
+ */
+async function sendInviteEmail({ to, link, orgName, inviterName }) {
+    return transporter.sendMail({
+        from: `"${process.env.MAIL_FROM_NAME || 'Teklif'}" <${MAIL_FROM}>`,
+        to,
+        subject: `${orgName} ekibine davet edildiniz`,
+        html: shell('Ekibe davet edildiniz', `
+            <p><strong>${inviterName}</strong>, sizi <strong>${orgName}</strong> ekibine davet etti.
+            Kabul ettiginizde ekibin teklifleri, musterileri ve panolari ortak calisma alaniniz olur.</p>
+            <p style="margin:24px 0;">
+                <a href="${link}" style="background:#2e7d32; color:#fff; padding:12px 22px; border-radius:8px; text-decoration:none; display:inline-block;">Daveti kabul et</a>
+            </p>
+            <p style="font-size:13px; color:#64748b;">Baglanti <strong>7 gun</strong> gecerlidir ve yalnizca bu adresle kullanilabilir.
+            Hesabiniz yoksa once kayit olmaniz istenecek.</p>
+            <p style="font-size:12px; color:#94a3b8; word-break:break-all;">Buton calismazsa: ${link}</p>
+        `)
+    });
+}
+
 module.exports = {
     sendFeedbackEmail, sendReminderEmail, sendProposalEmail, isMailConfigured,
-    sendPasswordResetEmail, sendVerificationEmail
+    sendPasswordResetEmail, sendVerificationEmail, sendInviteEmail
 };
 

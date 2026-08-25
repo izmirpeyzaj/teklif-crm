@@ -47,9 +47,27 @@ function currentUser(req) {
     if (!token) return null;
     try {
         const { userId } = jwt.verify(token, JWT_SECRET);
-        return db.prepare(
+        // Kullaniciyla birlikte organizasyonunu da getiriyoruz: artik tum veri
+        // org bazli, her istekte "bu kisi hangi ekipte" sorusunun cevabi lazim.
+        const user = db.prepare(
             'SELECT id, email, display_name, company_name, industry_id, email_verified FROM users WHERE id = ?'
-        ).get(userId) || null;
+        ).get(userId);
+        if (!user) return null;
+
+        const uyelik = db.prepare(
+            'SELECT org_id, role FROM org_members WHERE user_id = ?'
+        ).get(user.id);
+
+        if (uyelik) {
+            user.org_id = uyelik.org_id;
+            user.role = uyelik.role;
+        } else if (db.ensureOrgFor) {
+            // Eski hesaplar (gecis oncesi olusmus) icin guvenlik agi.
+            user.org_id = db.ensureOrgFor(user.id);
+            user.role = 'owner';
+        }
+
+        return user;
     } catch (e) {
         return null;
     }
@@ -63,4 +81,21 @@ function requireAuth(req, res, next) {
     next();
 }
 
-module.exports = { COOKIE, issue, clear, currentUser, requireAuth };
+// Organizasyon baglami zorunlu olan uclar icin.
+function requireOrg(req, res, next) {
+    const user = currentUser(req);
+    if (!user) return res.status(401).json({ message: 'Giris gerekli.' });
+    if (!user.org_id) return res.status(500).json({ message: 'Organizasyon bulunamadi.' });
+    req.user = user;
+    next();
+}
+
+// Yalnizca sahibin yapabilecegi islemler (uye cikarma, ekip silme).
+function requireOwner(req, res, next) {
+    if (req.user.role !== 'owner') {
+        return res.status(403).json({ message: 'Bu islem icin ekip sahibi olmaniz gerekiyor.' });
+    }
+    next();
+}
+
+module.exports = { COOKIE, issue, clear, currentUser, requireAuth, requireOrg, requireOwner };

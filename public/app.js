@@ -19,6 +19,138 @@ const DEFAULT_TERMS = `GENEL HÜKÜMLER VE GARANTİ KOŞULLARI
 // Tüm localStorage anlık görüntüsü sunucuda saklanır; her cihaz açılışta çeker,
 // değişiklikte (debounce) geri yükler. Şifre kapısı = tek işletme = tek hesap.
 // ====================================
+// ====================================
+// EKIP VERI KATMANI
+// ====================================
+// Eskiden tum veri tek bir JSON blogu olarak 3 saniyede bir gonderiliyordu ve
+// her gonderim sunucudaki kaydin TAMAMINI degistiriyordu. Iki kisi ayni anda
+// calisinca son yazan digerini sessizce siliyordu.
+//
+// Artik:
+//   * Musteriler ve teklifler kendi uclarina yaziliyor (birbirini etkilemez).
+//   * Digerleri anahtar basina SURUMLU. Okudugumuz surumu geri gonderiyoruz;
+//     arada ekip arkadasi degistirmisse 409 gelir ve kullaniciya soyleriz.
+//   * Sunucu artik dogrunun kaynagi: acilista her zaman ondan okuyoruz.
+//     Eski "kim daha yeni" zaman damgasi karsilastirmasina gerek kalmadi.
+
+const ORG_KEYS = {
+    teklif_company: 'company',
+    teklif_services: 'services',
+    teklif_products: 'products',
+    teklif_refs: 'refs',
+    teklif_kanban: 'kanban',
+    teklif_price_history: 'price_history'
+};
+
+let _versions = {};          // anahtar -> sunucudaki surum
+let _catismaBildirildi = false;
+
+function setSyncStatus(s) {
+    let el = document.getElementById('syncBadge');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'syncBadge';
+        el.style.cssText = 'position:fixed; bottom:14px; right:14px; z-index:2000; font-size:.72rem; padding:5px 11px; border-radius:20px; box-shadow:0 2px 8px rgba(0,0,0,.15); background:#fff; border:1px solid #e2e8f0; transition:opacity .4s; max-width:280px;';
+        const st = document.createElement('style');
+        st.textContent = '@media print { #syncBadge { display:none !important; } }';
+        document.head.appendChild(st);
+        if (document.body) document.body.appendChild(el);
+    }
+    const map = {
+        saving: ['☁️ Kaydediliyor…', '#475569'],
+        saved: ['☁️ Kaydedildi', '#16a34a'],
+        error: ['⚠️ Kaydedilemedi', '#dc2626'],
+        conflict: ['⚠️ Ekip arkadaşınız değiştirdi — sayfayı yenileyin', '#b45309']
+    };
+    const m = map[s] || map.saved;
+    el.textContent = m[0]; el.style.color = m[1]; el.style.opacity = '1';
+    if (s === 'saved') { clearTimeout(el._t); el._t = setTimeout(() => { el.style.opacity = '0.45'; }, 2500); }
+}
+
+function catismaUyari(mesaj) {
+    // Ayni oturumda tekrar tekrar uyarmiyoruz; kullanici zaten yenilemeli.
+    setSyncStatus('conflict');
+    if (_catismaBildirildi) return;
+    _catismaBildirildi = true;
+    alert(mesaj || 'Bu veriyi siz açtıktan sonra ekip arkadaşınız değiştirdi.\n\n' +
+        'Yaptığınız son değişiklik kaydedilmedi. Sayfayı yenileyip tekrar deneyin.');
+}
+
+// Ayni anahtara ard arda yazmayi tek istege indir.
+const _bekleyen = {};
+function zamanlaKaydet(kind, fn, gecikme) {
+    if (_bekleyen[kind]) clearTimeout(_bekleyen[kind].t);
+    const t = setTimeout(() => { delete _bekleyen[kind]; fn(); }, gecikme == null ? 700 : gecikme);
+    _bekleyen[kind] = { t, fn };
+}
+
+// Sayfa kapanirken bekleyen yazimlari hemen gonder. Debounce olmadan her tusa
+// basista istek atardik; debounce ile de son degisiklik sekmeyi kapatan
+// kullanicida kaybolabilirdi. Ikisinin arasi: kapanista bosalt.
+function bekleyenleriGonder() {
+    for (const k of Object.keys(_bekleyen)) {
+        const b = _bekleyen[k];
+        clearTimeout(b.t);
+        delete _bekleyen[k];
+        try { b.fn(); } catch (e) { /* kapanista sessiz gec */ }
+    }
+}
+
+async function keyKaydet(orgKey, value) {
+    if (!_syncReady) return;
+    setSyncStatus('saving');
+    try {
+        const r = await fetch('/api/data/key/' + orgKey, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ value, version: _versions[orgKey] })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (r.status === 409) { catismaUyari(data.message); return; }
+        if (!r.ok) { setSyncStatus('error'); return; }
+        _versions[orgKey] = data.version;
+        setSyncStatus('saved');
+    } catch (e) {
+        setSyncStatus('error');
+    }
+}
+
+async function listeKaydet(yol, govde) {
+    if (!_syncReady) return;
+    setSyncStatus('saving');
+    try {
+        const r = await fetch('/api/data/' + yol, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(govde)
+        });
+        setSyncStatus(r.ok ? 'saved' : 'error');
+    } catch (e) {
+        setSyncStatus('error');
+    }
+}
+
+// Acilista sunucudan oku ve yerel onbellegi doldur.
+// Cizim kodu (211KB) hâlâ localStorage'dan okuyor; onu degistirmiyoruz,
+// yalnizca icerigi sunucudan besliyoruz.
+async function loadOrgData() {
+    const r = await fetch('/api/data');
+    if (!r.ok) throw new Error('Veri okunamadi');
+    const j = await r.json();
+
+    _versions = j.versions || {};
+
+    clearTeklifKeys();
+    for (const [blobKey, orgKey] of Object.entries(ORG_KEYS)) {
+        if (j.data && j.data[orgKey] != null) localStorage.setItem(blobKey, j.data[orgKey]);
+    }
+    localStorage.setItem('teklif_customers', JSON.stringify(j.customers || []));
+    localStorage.setItem('teklif_saved', JSON.stringify(j.proposals || []));
+
+    _syncReady = true;
+    setSyncStatus('saved');
+}
+
 const SYNC_TS_KEY = 'teklif_sync_updatedAt';
 let _lastSyncedCanon = null;
 
@@ -65,122 +197,55 @@ function canonicalSync(obj) {
     return JSON.stringify(Object.keys(obj).sort().reduce((a, k) => { a[k] = obj[k]; return a; }, {}));
 }
 
-function setSyncStatus(s) {
-    let el = document.getElementById('syncBadge');
-    if (!el) {
-        el = document.createElement('div');
-        el.id = 'syncBadge';
-        el.style.cssText = 'position:fixed; bottom:14px; right:14px; z-index:2000; font-size:.72rem; padding:5px 11px; border-radius:20px; box-shadow:0 2px 8px rgba(0,0,0,.15); background:#fff; border:1px solid #e2e8f0; transition:opacity .4s;';
-        const st = document.createElement('style');
-        st.textContent = '@media print { #syncBadge { display:none !important; } }';
-        document.head.appendChild(st);
-        if (document.body) document.body.appendChild(el);
-    }
-    const map = { saving: ['☁️ Kaydediliyor…', '#475569'], saved: ['☁️ Senkronize', '#16a34a'], error: ['⚠️ Çevrimdışı (yerelde)', '#dc2626'] };
-    const m = map[s] || map.saved;
-    el.textContent = m[0]; el.style.color = m[1]; el.style.opacity = '1';
-    if (s === 'saved') { clearTimeout(el._t); el._t = setTimeout(() => { el.style.opacity = '0.45'; }, 2500); }
-}
+// ====================================
+// SENKRONIZASYON DONGUSU
+// ====================================
+// Eskiden burada 3 saniyede bir tum veriyi gonderen bir dongu vardi ve her
+// gonderim sunucudaki kaydin TAMAMINI degistiriyordu. Artik kayitlar
+// degisikligin oldugu yerde, yalnizca ilgili uca gidiyor (bkz. EKIP VERI
+// KATMANI). Geriye iki gorev kaldi: kapanista bekleyenleri bosaltmak ve
+// cikista yazmayi kapatmak.
 
-// Değişiklikleri periyodik olarak yakalayıp buluta gönder (localStorage'a dokunmadan)
-let _syncTimer = null;
 let _syncStopped = false;
 
 // Bulut kaydinin uzerine yazmaya YALNIZCA sunucudan basariyla veri cektikten
-// sonra izin verilir.
-//
-// Neden: bu mimaride her gonderim, sunucudaki blogun tamamini degistirir. Yerel
-// depo herhangi bir sebeple eksik doldugunda (sayfa yarim yuklendi, kullanici
-// degisti, cikis sirasinda temizlendi) o eksik hali gondermek, kullanicinin tum
-// musteri ve tekliflerini siler. Testte tam olarak bu oldu: 2 anahtarlik yarim
-// bir durum, sunucudaki 9 anahtarlik kaydin uzerine yazdi.
-//
-// Cekme basarisiz olursa (cevrimdisi) bayrak false kalir: o oturumda veri
-// gonderilmez. Cevrimdisi duzenlemenin buluta gitmemesi, buluttaki dogru verinin
-// yanlisla ezilmesinden iyidir.
+// sonra izin verilir. Cekme basarisiz olursa (cevrimdisi) bayrak false kalir:
+// o oturumda veri gonderilmez. Cevrimdisi duzenlemenin buluta gitmemesi,
+// buluttaki dogru verinin yanlisla ezilmesinden iyidir.
 let _syncReady = false;
 
 function startSyncLoop() {
     _syncStopped = false;
-    _syncTimer = setInterval(pushSync, 3000);
-    document.addEventListener('visibilitychange', () => { if (document.hidden) pushSync(); });
-    window.addEventListener('pagehide', () => { pushSync(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden) bekleyenleriGonder(); });
+    window.addEventListener('pagehide', bekleyenleriGonder);
 }
 
-// Cikista kritik: yerel veri silindikten SONRA donguden bir tik daha gecerse
-// buluta bos anlik goruntu yazilir ve hesabin tum verisi silinir.
+// Cikista kritik: yerel veri silindikten SONRA bekleyen bir yazim calisirsa
+// buluta bos liste yazilir ve hesabin verisi silinir.
 function stopSyncLoop() {
     _syncStopped = true;
     _syncReady = false;
-    if (_syncTimer) { clearInterval(_syncTimer); _syncTimer = null; }
+    for (const k of Object.keys(_bekleyen)) { clearTimeout(_bekleyen[k].t); delete _bekleyen[k]; }
 }
 
+// Disaridan cagrilan eski ad; artik yalnizca bekleyenleri bosaltiyor.
 async function pushSync() {
-    if (_syncStopped) return;
-    if (!_syncReady) return;   // sunucu durumu bilinmeden yazma (bkz. _syncReady)
-
-    const data = collectSyncData();
-
-    // Bos anlik goruntu ASLA gonderilmez.
-    // Bos `teklif_*` kumesi "kullanicinin hicbir verisi yok" degil, "veri henuz
-    // yuklenmedi / az once temizlendi" demektir.
-    if (Object.keys(data).length === 0) return;
-
-    const canon = canonicalSync(data);
-    if (canon === _lastSyncedCanon) return; // değişmemiş
-    setSyncStatus('saving');
-    try {
-        const updatedAt = Date.now();
-        const res = await fetch('/api/sync', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data, updatedAt })
-        });
-        if (res.ok) { _lastSyncedCanon = canon; localStorage.setItem(SYNC_TS_KEY, String(updatedAt)); setSyncStatus('saved'); }
-        else setSyncStatus('error');
-    } catch (e) { setSyncStatus('error'); }
+    if (_syncStopped || !_syncReady) return;
+    bekleyenleriGonder();
 }
 window.forceSyncNow = pushSync;
 
+// Acilis: sunucu artik dogrunun kaynagi. Eski "kim daha yeni" zaman damgasi
+// karsilastirmasi kalkti — veri tek yerde ve varlik bazinda tutuluyor.
+// Donus degeri: sayfa yeniden yuklenecek mi (artik hayir, geriye donuk uyum).
 async function pullSyncOnLoad() {
     try {
-        const res = await fetch('/api/sync');
-        if (!res.ok) { setSyncStatus('error'); return false; }
-        const srv = await res.json();
-        const serverTs = parseInt(srv.updatedAt) || 0;
-        const localTs = parseInt(localStorage.getItem(SYNC_TS_KEY)) || 0;
-        const localHasData = Object.keys(collectSyncData()).length > 0;
-
-        if (srv.data && serverTs > localTs) {
-            return applyServerData(srv.data, serverTs); // sunucu daha yeni -> uygula + reload
-        }
-        if (!srv.data && localHasData) {
-            // Sunucu bos, yerel dolu -> yereli buluta tohumla.
-            _syncReady = true;
-            await pushSync();
-            return false;
-        }
-        if (srv.data) { try { _lastSyncedCanon = canonicalSync(JSON.parse(srv.data)); } catch (e) { } }
-
-        // Buraya gelindiyse sunucunun durumu biliniyor ve yerel ondan geri degil.
-        _syncReady = true;
-        setSyncStatus('saved');
-    } catch (e) { setSyncStatus('error'); }
+        await loadOrgData();
+    } catch (e) {
+        setSyncStatus('error');
+    }
     return false;
 }
-
-function applyServerData(dataStr, serverTs) {
-    let obj;
-    try { obj = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr; }
-    catch (e) { return false; }
-    // Yeniden yukleme oncesi yazmayi kapat: aradaki tikda yarim durum gitmesin.
-    stopSyncLoop();
-    clearTeklifKeys();
-    Object.keys(obj).forEach(k => { if (k.indexOf('teklif_') === 0) localStorage.setItem(k, obj[k]); });
-    localStorage.setItem(SYNC_TS_KEY, String(serverTs));
-    location.reload();
-    return true;
-}
-
 
 // ====================================
 // OTURUM / UYELIK
@@ -784,33 +849,51 @@ window.toggleService = function (jobId) {
 };
 
 function persistCompany() {
-    localStorage.setItem(STORAGE_KEYS.COMPANY, JSON.stringify(state.company));
+    const _v = JSON.stringify(state.company);
+    localStorage.setItem(STORAGE_KEYS.COMPANY, _v);
+    zamanlaKaydet('company', () => keyKaydet('company', _v));
     updateProposalHeaders();
 }
 
 function persistServices() {
-    localStorage.setItem(STORAGE_KEYS.SERVICES, JSON.stringify(state.jobs));
+    const _v = JSON.stringify(state.jobs);
+    localStorage.setItem(STORAGE_KEYS.SERVICES, _v);
+    zamanlaKaydet('services', () => keyKaydet('services', _v));
     renderServiceChecklist();
     renderServiceList();
 }
 
 function persistReferences() {
-    localStorage.setItem(STORAGE_KEYS.REFS, JSON.stringify(state.references));
+    const _v = JSON.stringify(state.references);
+    localStorage.setItem(STORAGE_KEYS.REFS, _v);
+    zamanlaKaydet('refs', () => keyKaydet('refs', _v));
     renderReferencesGrid();
+}
+
+// Teklifler dort ayri yerde dogrudan localStorage'a yaziliyordu; tek noktaya
+// aldik ki sunucuya da gitsinler.
+function persistProposals() {
+    localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+    zamanlaKaydet('proposals', () => listeKaydet('proposals', { proposals: state.savedProposals }));
 }
 
 function persistCustomers() {
     localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(state.customers));
+    zamanlaKaydet('customers', () => listeKaydet('customers', { customers: state.customers }));
     renderCustomerList();
 }
 
 function persistKanban() {
-    localStorage.setItem(STORAGE_KEYS.KANBAN, JSON.stringify(state.kanban));
+    const _v = JSON.stringify(state.kanban);
+    localStorage.setItem(STORAGE_KEYS.KANBAN, _v);
+    zamanlaKaydet('kanban', () => keyKaydet('kanban', _v));
     renderKanban();
 }
 
 function persistProducts() {
-    localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(state.products));
+    const _v = JSON.stringify(state.products);
+    localStorage.setItem(STORAGE_KEYS.PRODUCTS, _v);
+    zamanlaKaydet('products', () => keyKaydet('products', _v));
     renderProductChecklist();
     renderProductList();
 }
@@ -1764,6 +1847,41 @@ window.deleteCustomer = function (id) {
     persistCustomers();
 };
 
+// Musteri karlilik ozeti — "hangi musteri bize ne kazandiriyor" sorusunun
+// cevabi. Teklifler musteriye ADLA baglaniyor (kayitli teklifte customerId
+// yok), o yuzden ad esleyerek topluyoruz; buyuk/kucuk harf ve bosluk farkini
+// yok sayiyoruz ki "Ali Yilmaz" ile "ali yilmaz " ayrilmasin.
+function musteriOzeti(ad) {
+    const anahtar = String(ad || '').trim().toLocaleLowerCase('tr');
+    if (!anahtar) return null;
+
+    const teklifler = state.savedProposals.filter(
+        p => String(p.customerName || '').trim().toLocaleLowerCase('tr') === anahtar
+    );
+    if (!teklifler.length) return { adet: 0, tutar: 0, kar: 0, hasCost: false, kabul: 0, kabulTutar: 0 };
+
+    let tutar = 0, kar = 0, hasCost = false, kabul = 0, kabulTutar = 0;
+    teklifler.forEach(p => {
+        tutar += parseFloat(p.total) || 0;
+        const k = teklifKar(p);
+        if (k && k.hasCost) { kar += k.profit; hasCost = true; }
+        // Kabul edilenler ayri: teklif tutari niyet, kabul edilen ciro.
+        if (kabulEdildiMi(p)) { kabul++; kabulTutar += parseFloat(p.total) || 0; }
+    });
+    return { adet: teklifler.length, tutar, kar, hasCost, kabul, kabulTutar };
+}
+
+// Teklifin kabul durumu iki yerde tutulabiliyor: teklifin kendi status alani ve
+// kanbanda hangi sutunda oldugu. Kanban kullanicinin fiilen surukledigi yer
+// oldugu icin once ona bakiyoruz.
+function kabulEdildiMi(p) {
+    const liste = state.kanban.find(l => (l.cards || []).some(
+        c => (c.proposals || []).includes(p.code)
+    ));
+    if (liste) return liste.id === 'list-accepted';
+    return p.status === 'Kabul Edildi' || p.status === 'Accepted';
+}
+
 function renderCustomerList() {
     if (!els.customerList) return;
     els.customerList.innerHTML = '';
@@ -1785,9 +1903,19 @@ function renderCustomerList() {
         const phoneLink = waPhone ? `<a href="https://wa.me/${waPhone}" target="_blank" style="color:#25D366; text-decoration:none;" title="WhatsApp'ta aç">${cust.phone}</a>` : '-';
         const emailLink = cust.email ? `<a href="mailto:${cust.email}" style="color:var(--accent); text-decoration:none;" title="Email gönder">${cust.email}</a>` : '-';
 
+        const ozet = musteriOzeti(cust.name);
+        const ozetHtml = (ozet && ozet.adet)
+            ? `<div style="font-size:.72rem; color:var(--text-muted); margin-top:3px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                   <span>${ozet.adet} teklif · ${formatCurrency(ozet.tutar)}</span>
+                   ${ozet.kabul ? `<span style="color:#16a34a;">✓ ${ozet.kabul} kabul · ${formatCurrency(ozet.kabulTutar)}</span>` : ''}
+                   ${ozet.hasCost ? `<span title="Toplam kâr — müşteriye gösterilmez" style="font-weight:700; color:${ozet.kar >= 0 ? '#16a34a' : '#dc2626'};">🔒 ${formatCurrency(ozet.kar)}</span>` : ''}
+               </div>`
+            : '';
+
         div.innerHTML = `
             <div class="service-item-body">
                 <div class="service-item-info" style="cursor:pointer;" onclick="openCustomerProjects('${cust.id}')" title="Projeleri Görüntüle">${cust.name}</div>
+                ${ozetHtml}
                 <div class="service-item-sub">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#25D366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> ${phoneLink} | 
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> ${emailLink}
@@ -1977,6 +2105,94 @@ window.applyLastPrice = (id, price) => {
     renderCostPanel();
 };
 
+// Kalem bazli OZEL NOT — ekip ici. Teklif kagidina (#proposalPaper) hicbir
+// kosulda basilmaz, dolayisiyla PDF'e ve musteriye gitmez. "Bu malzemeyi X
+// toptancidan al", "gecen sefer bu isi 2 gunde bitirdik" gibi notlar icin.
+function kacisliMetin(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function ozelNotAlani(item, handler) {
+    const dolu = item.internalNote && String(item.internalNote).trim() !== '';
+    return `<div style="margin-top:6px;" data-internal="ozel-not">
+        <input type="text" value="${kacisliMetin(item.internalNote)}"
+               placeholder="🔒 Özel not (müşteri görmez)"
+               title="Yalnızca siz ve ekibiniz görür — teklifte ve PDF'te yer almaz"
+               class="form-control"
+               style="width:100%; padding:4px 8px; font-size:.78rem; border-color:${dolu ? '#fbbf24' : '#e2e8f0'}; background:${dolu ? '#fffbeb' : '#fff'};"
+               onchange="${handler}('${item.id}', this.value)">
+    </div>`;
+}
+
+window.updateItemNote = (id, v) => {
+    const item = state.cart.find(i => i.id === id);
+    if (item) item.internalNote = v;
+};
+
+window.updateProductNote = (id, v) => {
+    const item = state.productCart.find(i => i.id === id);
+    if (item) item.internalNote = v;
+};
+
+// ====================================
+// KAR / MALIYET HESABI
+// ====================================
+// TEK KAYNAK: hem canli sepet (builder) hem kayitli teklifler (kanban, musteri
+// analizi, dashboard) ayni fonksiyonu kullanir. Iki ayri hesap olsaydi biri
+// guncellendiginde digeri sessizce yanlis rakam gosterirdi.
+//
+// Kar KDV HARIC taban uzerinden hesaplanir: KDV firmanin geliri degil, devlete
+// aktarilan tutardir. KDV'yi gelire katmak kar marjini yapay olarak sisirir.
+//
+// Maliyet ZORUNLU DEGIL. Hic kalemde maliyet yoksa hasCost=false doner ve
+// arayuz kar yerine "—" gosterir; sifir maliyet varsayip "%100 kar" demez.
+// Bazi kalemlerde maliyet varsa kismi hesaplanir ve arayuz bunu belirtir.
+function hesaplaKar(items, products, discountType, discountValue) {
+    let revenue = 0, cost = 0, girilen = 0, toplamKalem = 0;
+
+    const tally = item => {
+        if (!item) return;
+        const q = parseFloat(item.qty) || 0;
+        revenue += (parseFloat(item.price) || 0) * q;
+        toplamKalem++;
+        if (item.cost != null && item.cost !== '') {
+            cost += (parseFloat(item.cost) || 0) * q;
+            girilen++;
+        }
+    };
+    (items || []).forEach(tally);
+    (products || []).forEach(tally);
+
+    // Toplu iskonto/zam geliri degistirir; maliyeti degistirmez.
+    const av = parseFloat(discountValue) || 0;
+    if (discountType === 'zam') revenue = revenue * (1 + av / 100);
+    else if (discountType === 'iskonto' || discountType === 'percentage') revenue = revenue * (1 - av / 100);
+    else if (discountType === 'amount') revenue = revenue - av;   // sabit tutar indirimi
+
+    const profit = revenue - cost;
+    return {
+        revenue, cost, profit,
+        margin: revenue > 0 ? (profit / revenue * 100) : 0,
+        hasCost: girilen > 0,
+        eksikMaliyet: toplamKalem - girilen        // kac kalemde maliyet girilmemis
+    };
+}
+
+// Kayitli teklif icin kisayol.
+function teklifKar(t) {
+    if (!t) return null;
+    return hesaplaKar(t.items, t.products, t.discountType, t.discountValue);
+}
+
+// Kucuk kar rozeti — kanban kartlari ve listelerde kullanilir.
+function karRozeti(k, kucuk) {
+    if (!k || !k.hasCost) return '';
+    const renk = k.profit >= 0 ? '#16a34a' : '#dc2626';
+    const fs = kucuk ? '.66rem' : '.75rem';
+    return `<span title="Kâr — müşteriye gösterilmez" style="font-size:${fs}; font-weight:700; color:${renk}; background:${k.profit >= 0 ? '#dcfce7' : '#fee2e2'}; padding:1px 7px; border-radius:10px; white-space:nowrap;">🔒 ${formatCurrency(k.profit)} · %${k.margin.toFixed(0)}</span>`;
+}
+
 function renderCart() {
     els.cartContainer.innerHTML = '';
     if (state.cart.length === 0) {
@@ -2002,6 +2218,7 @@ function renderCart() {
                     <input type="number" value="${item.cost != null && item.cost !== '' ? item.cost : ''}" placeholder="0" class="form-control" style="width:80px; padding:4px 8px; font-size:.85rem; border-color:#e2e8f0;" title="Birim maliyet — yalnızca size görünür, müşteriye gitmez" onchange="updateItemCost('${item.id}', this.value)">
                     <span style="font-size:.72rem; color:#94a3b8;">₺ / ${item.unit}</span>
                 </div>
+                ${ozelNotAlani(item, 'updateItemNote')}
             </div>
             <div class="cart-controls">
                 <input type="number" value="${item.qty}" min="1" class="qty-input" onchange="updateQty('${item.id}', this.value)">
@@ -2046,23 +2263,12 @@ function renderCostPanel() {
     if (!panel) {
         panel = document.createElement('div');
         panel.id = 'costAnalysisPanel';
+        panel.setAttribute('data-internal', 'kar-analizi');
         if (els.cartContainer.parentNode) els.cartContainer.parentNode.appendChild(panel);
     }
     if (!state.cart.length && !state.productCart.length) { panel.style.display = 'none'; return; }
-    let revenue = 0, cost = 0, hasCost = false;
-    const tally = item => {
-        const q = parseFloat(item.qty) || 0;
-        revenue += (parseFloat(item.price) || 0) * q;
-        if (item.cost != null && item.cost !== '') { cost += (parseFloat(item.cost) || 0) * q; hasCost = true; }
-    };
-    state.cart.forEach(tally);        // hizmetler
-    state.productCart.forEach(tally); // ürünler
-    // Toplu zam/iskonto'yu (yüzde) toplam gelire yansıt ki kâr/marj doğru olsun
-    const av = parseFloat(state.discountValue) || 0;
-    if (state.discountType === 'zam') revenue = revenue * (1 + av / 100);
-    else if (state.discountType === 'iskonto' || state.discountType === 'percentage') revenue = revenue * (1 - av / 100);
-    const profit = revenue - cost;
-    const margin = revenue > 0 ? (profit / revenue * 100) : 0;
+    const k = hesaplaKar(state.cart, state.productCart, state.discountType, state.discountValue);
+    const { revenue, cost, profit, margin, hasCost } = k;
     const profitColor = profit >= 0 ? '#16a34a' : '#dc2626';
     panel.style.display = 'block';
     panel.style.cssText = 'margin-top:16px; padding:14px 16px; background:#0f172a; border-radius:10px; color:#e2e8f0;';
@@ -2074,10 +2280,12 @@ function renderCostPanel() {
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:.85rem;">
             <div>Toplam Satış</div><div style="text-align:right; font-weight:600;">${formatCurrency(revenue)}</div>
             <div>Toplam Maliyet</div><div style="text-align:right; font-weight:600;">${hasCost ? formatCurrency(cost) : '—'}</div>
-            <div style="border-top:1px solid #334155; padding-top:6px;">Kâr</div><div style="border-top:1px solid #334155; padding-top:6px; text-align:right; font-weight:700; color:${profitColor};">${formatCurrency(profit)}</div>
-            <div>Kâr Marjı</div><div style="text-align:right; font-weight:700; color:${profitColor};">% ${margin.toFixed(1)}</div>
+            <div style="border-top:1px solid #334155; padding-top:6px;">Kâr</div><div style="border-top:1px solid #334155; padding-top:6px; text-align:right; font-weight:700; color:${hasCost ? profitColor : '#64748b'};">${hasCost ? formatCurrency(profit) : '—'}</div>
+            <div>Kâr Marjı</div><div style="text-align:right; font-weight:700; color:${hasCost ? profitColor : '#64748b'};">${hasCost ? '% ' + margin.toFixed(1) : '—'}</div>
         </div>
-        ${hasCost ? '' : '<div style="font-size:.72rem; color:#94a3b8; margin-top:8px;">Her kaleme maliyet girince kâr otomatik hesaplanır.</div>'}
+        ${!hasCost
+            ? '<div style="font-size:.72rem; color:#94a3b8; margin-top:8px;">Maliyet girmek zorunlu değil. Girdiğiniz kalemler için kâr otomatik hesaplanır.</div>'
+            : (k.eksikMaliyet > 0 ? `<div style="font-size:.72rem; color:#fbbf24; margin-top:8px;">⚠️ ${k.eksikMaliyet} kalemde maliyet girilmedi — gerçek kâr bundan düşük olabilir.</div>` : '')}
     `;
 }
 
@@ -2286,13 +2494,17 @@ window.saveCurrentProposal = function () {
         discountType: state.discountType || 'none',
         discountValue: state.discountValue || 0,
         notes: state.notes || '',
-        conditions: state.conditions || ''
+        conditions: state.conditions || '',
+        // Kim olusturdu — sunucu da bunu kendi kaydinda tutuyor (created_by).
+        // Buraya yazmamizin sebebi: kaydettikten hemen sonra kanbanda gorunsun,
+        // kullanici sayfayi yenilemek zorunda kalmasin.
+        createdByName: (currentUser && (currentUser.display_name || currentUser.email)) || ''
     };
 
     // Always push as a new proposal
     state.savedProposals.push(teklif);
 
-    localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+    persistProposals();
     renderSavedProposals();
 
     // Auto-update Kanban Project
@@ -2490,7 +2702,7 @@ window.loadProposalById = function (id) {
 window.deleteProposal = function (id) {
     if (!confirm('Silmek istediğinize emin misiniz?')) return;
     state.savedProposals = state.savedProposals.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+    persistProposals();
     renderSavedProposals();
 };
 
@@ -2523,7 +2735,7 @@ window.setProposalStatus = function (id, val) {
     const p = state.savedProposals.find(x => x.id === id);
     if (!p) return;
     p.status = val;
-    localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+    persistProposals();
     // Kanban'i da guncelle, yoksa "Tekliflerim"de Kabul gorunurken kart Open'da kaliyordu.
     moveKanbanCardForProposal(p);
     renderSavedProposals();
@@ -2751,6 +2963,23 @@ function getUrgencyStats(updatedAt) {
     };
 }
 
+// Bir kanban sutunundaki (ya da herhangi bir kart kumesinin) toplam tutar ve
+// karini hesaplar. Her kartin SON teklifi esas alinir; ayni musterinin eski
+// revizyonlarini da saymak toplami sisirirdi.
+function kartKumesiToplam(cards) {
+    let tutar = 0, kar = 0, maliyetli = 0;
+    (cards || []).forEach(card => {
+        if (!card.proposals || !card.proposals.length) return;
+        const kod = card.proposals[card.proposals.length - 1];
+        const p = state.savedProposals.find(sp => sp.code === kod);
+        if (!p) return;
+        tutar += parseFloat(p.total) || 0;
+        const k = teklifKar(p);
+        if (k && k.hasCost) { kar += k.profit; maliyetli++; }
+    });
+    return { tutar, kar, maliyetli };
+}
+
 function renderKanban() {
     if (!els.kanbanBoard) return;
     els.kanbanBoard.innerHTML = '';
@@ -2767,9 +2996,12 @@ function renderKanban() {
         listEl.className = `kanban-column ${columnClasses[list.id] || ''}`;
         listEl.dataset.listId = list.id;
 
+        const _kt = kartKumesiToplam(list.cards);
         listEl.innerHTML = `
             <div class="kanban-header">
-                <span class="kanban-header-title">${list.title} <small>(${list.cards.length})</small></span>
+                <span class="kanban-header-title">${list.title} <small>(${list.cards.length})</small>
+                    ${list.cards.length ? `<small style="display:block; font-weight:600; color:var(--text-muted); margin-top:2px;">${formatCurrency(_kt.tutar)}${_kt.maliyetli ? ` <span title="Bu sütundaki ${_kt.maliyetli} teklifin toplam kârı — müşteriye gösterilmez" style="color:${_kt.kar >= 0 ? '#16a34a' : '#dc2626'};">· 🔒 ${formatCurrency(_kt.kar)}</span>` : ''}</small>` : ''}
+                </span>
                 <div class="kanban-list-menu-wrapper">
                     <div class="list-menu-trigger" onclick="toggleListActionMenu(event, '${list.id}')" style="cursor:pointer; display:flex; align-items:center; justify-content:center;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
@@ -2810,12 +3042,16 @@ function renderKanban() {
             let lastTotal = "0.00 ₺";
             let lastDate = "-";
             let lastCode = "PRO-000000";
+            let kar = null;
+            let kimOlusturdu = '';
             if (card.proposals && card.proposals.length > 0) {
                 lastCode = card.proposals[card.proposals.length - 1];
                 const p = state.savedProposals.find(sp => sp.code === lastCode);
                 if (p) {
                     lastTotal = formatCurrency(p.total || 0);
                     lastDate = formatDate(p.date);
+                    kar = teklifKar(p);
+                    kimOlusturdu = p.createdByName || '';
                 }
             }
 
@@ -2831,11 +3067,13 @@ function renderKanban() {
                     </div>
                 </div>
                 <div class="card-title">${card.customerName || 'Bilinmiyor'}</div>
-                <div class="card-row" style="margin-top:4px;">
+                <div class="card-row" style="margin-top:4px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
                     <span>Tutar: ${lastTotal}</span>
+                    ${karRozeti(kar, true)}
                 </div>
-                <div class="card-row">
+                <div class="card-row" style="display:flex; justify-content:space-between; gap:6px;">
                     <span>Tarih: ${lastDate}</span>
+                    ${kimOlusturdu ? `<span style="font-size:.66rem; color:var(--text-muted);" title="Teklifi oluşturan">👤 ${kacisliMetin(kimOlusturdu)}</span>` : ''}
                 </div>
                 <div class="card-footer">
                     <div class="card-comments">
@@ -2917,7 +3155,7 @@ window.dropCard = function (e) {
             }
         });
         if (changed) {
-            localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+            persistProposals();
             renderSavedProposals();
         }
     }
@@ -3367,6 +3605,7 @@ function renderProductCart() {
                     <input type="number" value="${item.cost != null && item.cost !== '' ? item.cost : ''}" placeholder="0" class="form-control" style="width:80px; padding:4px 8px; font-size:.85rem; border-color:#e2e8f0;" title="Birim maliyet — yalnızca size görünür, müşteriye gitmez" onchange="updateProductCost('${item.id}', this.value)">
                     <span style="font-size:.72rem; color:#94a3b8;">₺ / ${item.unit}</span>
                 </div>
+                ${ozelNotAlani(item, 'updateProductNote')}
             </div>
             <div class="cart-controls">
                 <input type="number" value="${item.qty}" min="1" class="qty-input" onchange="updateProductQty('${item.id}', this.value)">
@@ -3905,6 +4144,12 @@ function captureProposalHtml() {
     srcInputs.forEach((inp, i) => {
         if (cloneInputs[i]) cloneInputs[i].setAttribute('value', inp.value || '');
     });
+
+    // SON SAVUNMA: ekip ici bilgiler (maliyet, kâr, özel not) musteriye giden
+    // ciktida ASLA bulunmamali. Bugun bunlar zaten #proposalPaper'in disinda
+    // duruyor; bu satir, ilerde biri panelin yerini degistirirse diye kapiyi
+    // kapatiyor. Ekip ici her yeni alana data-internal eklemek yeterli.
+    clone.querySelectorAll('[data-internal]').forEach(el => el.remove());
 
     return clone.outerHTML;
 }

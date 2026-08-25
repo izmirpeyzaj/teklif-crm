@@ -143,6 +143,239 @@ db.exec(`
 // bir sebep yok ve eski jetonlar sadece risk tasir.
 db.prepare('DELETE FROM auth_tokens WHERE expires_at < ?').run(Date.now());
 
+// ---------------------------------------------------------------------------
+// Ekip (organizasyon) yapisi
+// ---------------------------------------------------------------------------
+// Neden tek JSON blogundan cikiyoruz:
+//
+// Blok modelinde her gonderim sunucudaki verinin TAMAMINI degistiriyor. Tek
+// kullanicida bu yalnizca kendi cihazlari arasinda risk; iki kisi ayni anda
+// calisinca gunluk veri kaybi olur — A musteri ekler, 3 saniye sonra B teklif
+// kaydeder, B'nin gonderimi A'nin musterisini de siler.
+//
+// Cozum: sik degisen varliklar (musteriler, teklifler) GERCEK TABLOLARA;
+// seyrek degisenler (hizmet katalogu, firma bilgisi, referanslar, pano)
+// org_data'da ayri ayri satirlarda ve HER BIRI KENDI SURUMUYLE tutulur.
+// Boylece A hizmet listesini duzenlerken B pano surukleyebilir: farkli
+// satirlar, catisma yok. Ayni satiri ayni anda degistirirlerse surum
+// uyusmazligi 409 doner ve kullaniciya "yeniden yukle" denir — sessiz kayip
+// yerine gorunur uyari.
+// Eski semadan kalan kullanilmayan tablolar: services / proposals / kanban.
+// Bunlarin route'lari (routes/services.js vb.) server.js'e hic mount edilmedi,
+// tek satir veri yazilmadi. Yeni `proposals` tablosu ayni adi tasidigi icin
+// CREATE TABLE IF NOT EXISTS sessizce atlanir ve ardindan gelen indeks
+// "no such column: org_id" ile patlar. Bu yuzden once temizliyoruz.
+//
+// Guvenlik: YALNIZCA bos ve eski semaya ait (user_id sutunlu) olanlar dusuruluyor.
+for (const t of ['proposals', 'services', 'kanban']) {
+    const varMi = db.prepare(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?"
+    ).get(t);
+    if (!varMi) continue;
+
+    const sutunlar = db.prepare(`PRAGMA table_info(${t})`).all().map(c => c.name);
+    if (!sutunlar.includes('user_id')) continue;      // zaten yeni sema
+
+    const adet = db.prepare(`SELECT COUNT(*) c FROM ${t}`).get().c;
+    if (adet > 0) {
+        console.warn(`UYARI: eski ${t} tablosunda ${adet} satir var, dusurulmedi.`);
+        continue;
+    }
+    db.exec(`DROP TABLE ${t}`);
+    console.log(`Kullanilmayan eski tablo dusuruldu: ${t}`);
+}
+
+db.exec(`
+    CREATE TABLE IF NOT EXISTS organizations (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        name          TEXT,
+        owner_user_id INTEGER,
+        created_at    INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS org_members (
+        org_id    INTEGER NOT NULL,
+        user_id   INTEGER NOT NULL,
+        role      TEXT NOT NULL DEFAULT 'member',   -- 'owner' | 'member'
+        joined_at INTEGER NOT NULL,
+        PRIMARY KEY (org_id, user_id),
+        FOREIGN KEY (org_id)  REFERENCES organizations (id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users (id)         ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_org_members_user ON org_members (user_id);
+
+    -- Davetlerde de jetonun kendisi degil SHA-256 ozeti saklanir (auth_tokens
+    -- ile ayni gerekce): veritabani sizsa bile davet baglantisi uretilemez.
+    CREATE TABLE IF NOT EXISTS org_invites (
+        token_hash  TEXT PRIMARY KEY,
+        org_id      INTEGER NOT NULL,
+        email       TEXT NOT NULL,
+        role        TEXT NOT NULL DEFAULT 'member',
+        invited_by  INTEGER,
+        expires_at  INTEGER NOT NULL,
+        accepted_at INTEGER,
+        created_at  INTEGER NOT NULL,
+        FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_org_invites_org ON org_invites (org_id);
+
+    -- Seyrek degisen paylasimli veriler; her anahtar kendi surumunu tasir.
+    CREATE TABLE IF NOT EXISTS org_data (
+        org_id     INTEGER NOT NULL,
+        key        TEXT NOT NULL,          -- company | services | products | refs | kanban | price_history
+        value      TEXT NOT NULL,
+        version    INTEGER NOT NULL DEFAULT 1,
+        updated_at INTEGER NOT NULL,
+        updated_by INTEGER,
+        PRIMARY KEY (org_id, key),
+        FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS customers (
+        id         TEXT NOT NULL,
+        org_id     INTEGER NOT NULL,
+        name       TEXT NOT NULL,
+        phone      TEXT,
+        email      TEXT,
+        address    TEXT,
+        updated_at INTEGER NOT NULL,
+        created_by INTEGER,
+        PRIMARY KEY (org_id, id),
+        FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+    );
+
+    -- Teklif ayri satirda: "kim olusturdu" bilgisi, musteri onay baglantisi ve
+    -- sunucu tarafi raporlama ancak boyle mumkun. payload, teklif kalemlerinin
+    -- tamami (frontend'in bekledigi sekil aynen korunuyor).
+    CREATE TABLE IF NOT EXISTS proposals (
+        id            TEXT NOT NULL,
+        org_id        INTEGER NOT NULL,
+        code          TEXT NOT NULL,
+        customer_name TEXT,
+        project_name  TEXT,
+        total         REAL,
+        status        TEXT DEFAULT 'Beklemede',
+        payload       TEXT NOT NULL,
+        created_by    INTEGER,
+        created_at    INTEGER NOT NULL,
+        updated_at    INTEGER NOT NULL,
+        PRIMARY KEY (org_id, id),
+        FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_proposals_code ON proposals (org_id, code);
+    CREATE INDEX IF NOT EXISTS idx_proposals_created_by ON proposals (created_by);
+
+    -- Gonderim kaydi: "bu teklifi kim, ne zaman, kime gonderdi" sorusunun
+    -- cevabi hicbir yerde tutulmuyordu (gonder ve unut).
+    CREATE TABLE IF NOT EXISTS proposal_sends (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        org_id        INTEGER NOT NULL,
+        proposal_code TEXT,
+        to_email      TEXT NOT NULL,
+        sent_by       INTEGER,
+        sent_at       INTEGER NOT NULL,
+        status        TEXT NOT NULL DEFAULT 'sent',   -- sent | failed
+        error         TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_sends_org ON proposal_sends (org_id, sent_at);
+`);
+
+// Her kullaniciya kendi organizasyonunu ver ve blok verisini yeni yapiya tasi.
+// Idempotent: zaten organizasyonu olan kullanici atlanir.
+function ensureOrgFor(userId) {
+    const mevcut = db.prepare('SELECT org_id FROM org_members WHERE user_id = ?').get(userId);
+    if (mevcut) return mevcut.org_id;
+
+    const u = db.prepare('SELECT company_name, email FROM users WHERE id = ?').get(userId);
+    if (!u) return null;
+
+    const now = Date.now();
+    const orgId = db.prepare(
+        'INSERT INTO organizations (name, owner_user_id, created_at) VALUES (?, ?, ?)'
+    ).run(u.company_name || u.email, userId, now).lastInsertRowid;
+
+    db.prepare(
+        "INSERT INTO org_members (org_id, user_id, role, joined_at) VALUES (?, ?, 'owner', ?)"
+    ).run(orgId, userId, now);
+
+    return orgId;
+}
+
+// Blok -> tablolar. Veri kaybetmemek icin blok SILINMIYOR, sadece kopyalaniyor;
+// bir sorun cikarsa eski kayittan geri donulebilir.
+const ORG_DATA_KEYS = {
+    teklif_company: 'company',
+    teklif_services: 'services',
+    teklif_products: 'products',
+    teklif_refs: 'refs',
+    teklif_kanban: 'kanban',
+    teklif_price_history: 'price_history'
+};
+
+function migrateBlobToOrg(userId, orgId) {
+    const row = db.prepare('SELECT data FROM user_sync WHERE user_id = ?').get(userId);
+    if (!row || !row.data) return false;
+
+    let blob;
+    try { blob = JSON.parse(row.data); } catch (e) { return false; }
+
+    const now = Date.now();
+    const putData = db.prepare(`
+        INSERT INTO org_data (org_id, key, value, version, updated_at, updated_by)
+        VALUES (?, ?, ?, 1, ?, ?)
+        ON CONFLICT(org_id, key) DO NOTHING
+    `);
+    for (const [blobKey, orgKey] of Object.entries(ORG_DATA_KEYS)) {
+        if (blob[blobKey] != null) putData.run(orgId, orgKey, blob[blobKey], now, userId);
+    }
+
+    const putCustomer = db.prepare(`
+        INSERT INTO customers (id, org_id, name, phone, email, address, updated_at, created_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(org_id, id) DO NOTHING
+    `);
+    try {
+        for (const c of JSON.parse(blob.teklif_customers || '[]')) {
+            if (!c || !c.name) continue;
+            putCustomer.run(String(c.id || ('c' + Math.random().toString(36).slice(2))), orgId,
+                c.name, c.phone || '', c.email || '', c.address || '', c.updatedAt || now, userId);
+        }
+    } catch (e) { console.error('Musteri tasima hatasi:', e.message); }
+
+    const putProposal = db.prepare(`
+        INSERT INTO proposals (id, org_id, code, customer_name, project_name, total, status,
+                               payload, created_by, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(org_id, id) DO NOTHING
+    `);
+    try {
+        for (const t of JSON.parse(blob.teklif_saved || '[]')) {
+            if (!t || !t.code) continue;
+            putProposal.run(String(t.id || now), orgId, t.code, t.customerName || '',
+                t.projectName || '', t.total || 0, t.status || 'Beklemede',
+                JSON.stringify(t), userId, t.createdAt || now, now);
+        }
+    } catch (e) { console.error('Teklif tasima hatasi:', e.message); }
+
+    return true;
+}
+
+// Acilista: organizasyonu olmayan her kullanici icin kur ve tasi.
+const orgsuz = db.prepare(`
+    SELECT id FROM users WHERE id NOT IN (SELECT user_id FROM org_members)
+`).all();
+if (orgsuz.length) {
+    console.log(`${orgsuz.length} kullanici icin organizasyon olusturuluyor...`);
+    const tx = db.transaction(() => {
+        for (const u of orgsuz) {
+            const orgId = ensureOrgFor(u.id);
+            if (orgId) migrateBlobToOrg(u.id, orgId);
+        }
+    });
+    tx();
+    console.log('Organizasyon gecisi tamamlandi.');
+}
+
 // Tek kullanicili donemden kalan sync_store (id=1) hala duruyorsa, ilk kayit olan
 // kullanici onu devralir. Devralinca satir silinir; bu ayni zamanda "devralindi"
 // isaretidir, ayri bir bayrak tutmaya gerek kalmaz.
@@ -183,3 +416,6 @@ try {
 
 module.exports = db;
 module.exports.claimLegacySync = claimLegacySync;
+module.exports.ensureOrgFor = ensureOrgFor;
+module.exports.migrateBlobToOrg = migrateBlobToOrg;
+module.exports.ORG_DATA_KEYS = ORG_DATA_KEYS;

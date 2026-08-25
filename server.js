@@ -80,6 +80,8 @@ try {
     const authRoutes = require('./routes/auth');
     const pdfRoutes = require('./routes/pdf');
     const syncRoutes = require('./routes/sync');
+    const orgRoutes = require('./routes/org');
+    const dataRoutes = require('./routes/data');
 
     // Kullaniciya ait yuklemeler (AI gorselleri) statik klasorden ONCE korunur;
     // aksi halde URL'i bilen herkes baska bir isletmenin teklif gorsellerini
@@ -161,6 +163,8 @@ try {
     app.use('/api/auth', authRoutes);
     app.use('/api/pdf', pdfRoutes);
     app.use('/api/sync', syncRoutes);
+    app.use('/api/org', orgRoutes);
+    app.use('/api/data', dataRoutes);
 
     // NOT: routes/services.js, routes/proposals.js, routes/kanban.js olu kod.
     // Frontend'in tum verisi localStorage + /api/sync uzerinden akiyor; bu uclar

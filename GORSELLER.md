@@ -1,7 +1,7 @@
 # Görsel Üretim Rehberi
 
-Sektör paketlerindeki **242 hizmetin 144 tanesinin görseli hazır**, 
-**98 tanesi üretilmeyi bekliyor.** Bu dosya, hangi görselin nereye hangi adla 
+Sektör paketlerindeki **242 hizmetin 159 tanesinin görseli hazır**, 
+**83 tanesi üretilmeyi bekliyor.** Bu dosya, hangi görselin nereye hangi adla 
 konulacağını ve hangi istemle üretileceğini listeler.
 
 ## Sistem nasıl çalışıyor
@@ -57,45 +57,10 @@ bu listenin de belirli aralıklarla güncellenmesi gerekiyor.
 
 ## Üretilecek görseller
 
-### 🔌 Elektrik Tesisatı — 3 görsel
+### 📢 Reklam ve Dijital Pazarlama — 3 görsel
 
 | Dosya adı | Hizmet | İstem (konu) |
 |---|---|---|
-| `elektrik_spot_lamba_montaji.png` | Spot Lamba Montajı | an electrician installing a recessed LED spot light into a plasterboard ceiling |
-| `elektrik_sensorlu_aydinlatma_montaji.png` | Sensörlü Aydınlatma Montajı | a motion-sensor light fixture being mounted on an exterior wall at dusk |
-| `elektrik_topraklama_tesisati.png` | Topraklama Tesisatı | a copper grounding rod and earthing cable connection in an electrical panel |
-
-### 🚿 Su Tesisatı — 2 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `tesisat_su_kacak_tespiti.png` | Su Kaçak Tespiti | a plumber using a thermal camera to locate a hidden water leak behind a bathroom wall |
-| `tesisat_termostatik_vana_montaji.png` | Termostatik Vana Montajı | a thermostatic radiator valve being fitted to a white panel radiator |
-
-### 📐 İç Mimarlık ve Dekorasyon — 4 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `ic_mimarlik_mekanik_ve_havalandirma_projesi.png` | Mekanik ve Havalandırma Projesi | an HVAC and mechanical layout blueprint on a designer's desk with drafting tools |
-| `ic_mimarlik_mobilya_ve_detay_tasarimi.png` | Mobilya ve Detay Tasarımı | a bespoke furniture design sketch beside wood and fabric samples |
-| `ic_mimarlik_peyzaj_ve_dis_mekan_tasarimi.png` | Peyzaj ve Dış Mekan Tasarımı | a landscape design plan for a modern terrace with planting layout |
-| `ic_mimarlik_anahtar_teslim_tadilat_yonetimi.png` | Anahtar Teslim Tadilat Yönetimi | an interior designer reviewing renovation progress on site with a clipboard |
-
-### 💻 Yazılım ve Bilişim — 2 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `yazilim_qa_ve_otomasyon_testi.png` | QA ve Otomasyon Testi | a software tester reviewing automated test results on dual monitors |
-| `yazilim_yazilim_bakim_ve_guncelleme.png` | Yazılım Bakım ve Güncelleme | a developer monitoring server health dashboards and applying updates |
-
-### 📢 Reklam ve Dijital Pazarlama — 7 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `reklam_ajansi_kurumsal_kimlik_tasarimi.png` | Kurumsal Kimlik Tasarımı | a brand identity kit laid out flat: logo sheet, business cards, letterhead |
-| `reklam_ajansi_influencer_pazarlama.png` | Influencer Pazarlama | a content creator filming a product review with a ring light and phone |
-| `reklam_ajansi_e_mail_pazarlama_otomasyonu.png` | E-Mail Pazarlama Otomasyonu | an email marketing automation flow diagram on a laptop screen |
-| `reklam_ajansi_halkla_iliskiler_pr_hizmeti.png` | Halkla İlişkiler (PR) Hizmeti | a press release document and journalists at a corporate press briefing |
 | `reklam_ajansi_seo_icerik_stratejisi.png` | SEO İçerik Stratejisi | a keyword research and content calendar spread on a desk with a laptop |
 | `reklam_ajansi_acik_hava_ooh_reklamcilik.png` | Açık Hava (OOH) Reklamcılık | a large billboard advertisement on a city street at golden hour |
 | `reklam_ajansi_performans_pazarlamasi_auditi.png` | Performans Pazarlaması Auditi | an analytics dashboard showing advertising performance charts and ROI |

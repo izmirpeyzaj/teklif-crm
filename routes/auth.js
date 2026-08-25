@@ -141,14 +141,28 @@ async function sendVerification(user, req) {
     }
 }
 
-// Tek kullanicili donemden kalan veriyi ilk kayit olan devralir; devralmadiysa
-// sektor paketiyle temiz bir baslangic olusturulur.
+// Yeni hesabin kurulumu.
+//
+// Sira onemli: once ORGANIZASYON acilir, sonra baslangic verisi user_sync'e
+// yazilir, sonra org tablolarina tasinir. Veri artik org bazli okunuyor
+// (routes/data.js); yalnizca blogu doldurup birakmak, kullanicinin bombos bir
+// ekranla karsilasmasi demekti.
+//
+// Blok kasitli olarak siliNMIyor: gecis kodunun kaynagi ve olasi bir sorunda
+// geri donus noktasi.
 function initialiseAccount(userId, opts) {
+    const orgId = db.ensureOrgFor ? db.ensureOrgFor(userId) : null;
+
+    let devralindi = false;
     if (db.claimLegacySync && db.claimLegacySync(userId)) {
         console.log(`Kullanici ${userId} eski tek-kullanicili veriyi devraldi.`);
-        return -1;
+        devralindi = true;
+    } else {
+        createInitialSync(userId, opts);
     }
-    return createInitialSync(userId, opts);
+
+    if (orgId && db.migrateBlobToOrg) db.migrateBlobToOrg(userId, orgId);
+    return devralindi ? -1 : 0;
 }
 
 // ---------------------------------------------------------------------------
