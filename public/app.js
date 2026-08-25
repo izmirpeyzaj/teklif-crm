@@ -248,6 +248,204 @@ async function pullSyncOnLoad() {
 }
 
 // ====================================
+// EKIP YONETIMI
+// ====================================
+// Veri artik organizasyona ait (bkz. EKIP VERI KATMANI). Bir kullanici tek bir
+// ekipte olabilir: coklu ekip "hangi ekibin verisindeyim" secimi gerektirir ve
+// ayri bir tasarim isi. Tek ekip kurali sunucuda da uygulaniyor.
+
+let _ekip = null;
+
+async function ekibiYukle() {
+    const alan = document.getElementById('ekipAlani');
+    if (!alan) return;
+    try {
+        const r = await fetch('/api/org');
+        if (!r.ok) throw new Error('Ekip bilgisi alinamadi');
+        _ekip = await r.json();
+        ekibiCiz();
+    } catch (e) {
+        alan.innerHTML = '<p class="hint" style="color:#dc2626;">Ekip bilgisi yüklenemedi.</p>';
+    }
+}
+
+function ekipRolAdi(rol) {
+    return rol === 'owner' ? 'Sahip' : 'Ekip üyesi';
+}
+
+function ekibiCiz() {
+    const alan = document.getElementById('ekipAlani');
+    if (!alan || !_ekip) return;
+
+    const benSahipMiyim = _ekip.me && _ekip.me.role === 'owner';
+    const uyeler = _ekip.members || [];
+    const davetler = _ekip.invites || [];
+
+    const uyeSatirlari = uyeler.map(u => {
+        const benMiyim = u.user_id === _ekip.me.id;
+        const ad = u.display_name || u.email;
+        const cikarBtn = (benSahipMiyim && !benMiyim)
+            ? '<button class="btn btn-secondary" style="padding:5px 10px; font-size:.76rem; border-color:#dc2626; color:#dc2626; white-space:nowrap;" onclick="uyeyiCikar(' + u.user_id + ')">Çıkar</button>'
+            : '';
+        return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 0; border-bottom:1px solid var(--border);">' +
+            '<div style="min-width:0;">' +
+                '<div style="font-weight:600; font-size:.9rem; overflow:hidden; text-overflow:ellipsis;">' + kacisliMetin(ad) +
+                    (benMiyim ? ' <span style="font-weight:400; color:var(--text-muted); font-size:.78rem;">(siz)</span>' : '') + '</div>' +
+                '<div style="font-size:.76rem; color:var(--text-muted);">' + kacisliMetin(u.email) + ' · ' + ekipRolAdi(u.role) +
+                    (u.email_verified ? '' : ' · <span style="color:#b45309;">e-posta doğrulanmadı</span>') + '</div>' +
+            '</div>' + cikarBtn + '</div>';
+    }).join('');
+
+    const davetSatirlari = davetler.map(d =>
+        '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px dashed var(--border);">' +
+            '<div style="min-width:0;">' +
+                '<div style="font-size:.86rem; overflow:hidden; text-overflow:ellipsis;">' + kacisliMetin(d.email) + '</div>' +
+                '<div style="font-size:.74rem; color:var(--text-muted);">Davet gönderildi · ' +
+                    formatDate(new Date(d.expires_at).toISOString().split('T')[0]) + ' tarihine kadar geçerli</div>' +
+            '</div>' +
+            '<button class="btn btn-secondary" style="padding:5px 10px; font-size:.76rem; white-space:nowrap;" onclick="davetiIptalEt(\'' + kacisliMetin(d.email) + '\')">İptal</button>' +
+        '</div>').join('');
+
+    const sahipBolumu =
+        '<div style="margin-top:18px;">' +
+            '<label style="font-size:.84rem; font-weight:600;">Yeni kişi davet et</label>' +
+            '<div style="display:flex; gap:8px; margin-top:6px;">' +
+                '<input type="email" id="ekipDavetEposta" class="form-control" placeholder="calisan@sirket.com" style="flex:1;">' +
+                '<button class="btn btn-primary" style="white-space:nowrap;" onclick="ekibeDavetGonder()">Davet Gönder</button>' +
+            '</div>' +
+            '<p class="hint" style="margin-top:8px; margin-bottom:0;">Davet edilen kişi kendi hesabıyla giriş yapıp daveti kabul eder. ' +
+                'Sizinle <strong>aynı</strong> müşteri, teklif ve panoları görür.</p>' +
+            '<div id="ekipDavetSonuc" style="margin-top:8px;"></div>' +
+        '</div>';
+
+    const uyeBolumu =
+        '<div style="margin-top:16px;">' +
+            '<p class="hint" style="margin-bottom:8px;">Bu ekibe davet edildiniz. Ayrılırsanız kendi boş hesabınıza dönersiniz; ' +
+                'ekibin verisi ekipte kalır.</p>' +
+            '<button class="btn btn-secondary" style="width:100%; border-color:#dc2626; color:#dc2626;" onclick="ekiptenAyril()">Ekipten ayrıl</button>' +
+        '</div>';
+
+    alan.innerHTML =
+        '<div style="margin-bottom:6px; font-size:.8rem; color:var(--text-muted);">' +
+            '<strong style="color:var(--text);">' + kacisliMetin((_ekip.org && _ekip.org.name) || 'Ekibim') + '</strong> · ' +
+            uyeler.length + ' kişi</div>' +
+        uyeSatirlari +
+        (davetler.length ? '<div style="margin-top:16px; font-size:.82rem; font-weight:600;">Bekleyen davetler</div>' + davetSatirlari : '') +
+        (benSahipMiyim ? sahipBolumu : uyeBolumu);
+}
+
+window.ekibeDavetGonder = async () => {
+    const girdi = document.getElementById('ekipDavetEposta');
+    const sonuc = document.getElementById('ekipDavetSonuc');
+    const eposta = (girdi.value || '').trim();
+    if (!eposta) return;
+
+    sonuc.innerHTML = '<span class="hint">Gönderiliyor…</span>';
+    try {
+        const r = await fetch('/api/org/invite', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: eposta })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            sonuc.innerHTML = '<span style="color:#dc2626; font-size:.8rem;">' + kacisliMetin(j.message || 'Davet gönderilemedi.') + '</span>';
+            return;
+        }
+
+        girdi.value = '';
+        await ekibiYukle();
+
+        // DIKKAT: ekibiYukle() tum alani yeniden cizdigi icin sonuc kutusunu da
+        // siler. Bu yuzden mesaji listeden SONRA yaziyoruz. Aksi halde mail
+        // kapaliyken davet baglantisi bir an gorunup kayboluyordu.
+        const kutu = document.getElementById('ekipDavetSonuc');
+        if (kutu) {
+            kutu.innerHTML = j.link
+                ? '<div style="font-size:.78rem; color:#b45309;">E-posta gönderimi kapalı. Bu bağlantıyı kendiniz iletin:' +
+                  '<input class="form-control" style="margin-top:6px; font-size:.75rem;" readonly value="' + kacisliMetin(j.link) + '" onclick="this.select()"></div>'
+                : '<span style="color:#16a34a; font-size:.8rem;">✓ Davet ' + kacisliMetin(eposta) + ' adresine gönderildi.</span>';
+        }
+    } catch (e) {
+        sonuc.innerHTML = '<span style="color:#dc2626; font-size:.8rem;">Bağlantı hatası.</span>';
+    }
+};
+
+window.davetiIptalEt = async (eposta) => {
+    if (!confirm(eposta + ' adresine gönderilen davet iptal edilsin mi?')) return;
+    await fetch('/api/org/invite', {
+        method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: eposta })
+    });
+    await ekibiYukle();
+};
+
+window.uyeyiCikar = async (userId) => {
+    const u = (_ekip && _ekip.members || []).find(m => m.user_id === userId);
+    const ad = u ? (u.display_name || u.email) : 'Bu kişi';
+    if (!confirm(ad + ' ekipten çıkarılsın mı?\n\nBu kişi artık ekibin müşteri ve tekliflerini göremez. Oluşturduğu teklifler ekipte kalır.')) return;
+    const r = await fetch('/api/org/members/' + userId, { method: 'DELETE' });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); alert(j.message || 'Çıkarılamadı.'); return; }
+    await ekibiYukle();
+};
+
+window.ekiptenAyril = async () => {
+    if (!confirm('Ekipten ayrılmak istediğinize emin misiniz?\n\nKendi boş hesabınıza dönersiniz; ekibin verisine artık erişemezsiniz.')) return;
+    const r = await fetch('/api/org/leave', { method: 'POST' });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); alert(j.message || 'Ayrılınamadı.'); return; }
+    location.reload();
+};
+
+// Davet baglantisi: /?invite_token=... Kabul icin giris SART (bkz. routes/org.js).
+// Bu yuzden jetonu saklayip giristen sonra tekrar deniyoruz; aksi halde
+// kullanici giris ekranina dusunce davet kayboluyordu.
+const DAVET_SAKLAMA = 'crm_bekleyen_davet';
+
+function davetJetonunuYakala() {
+    const url = new URL(location.href);
+    const t = url.searchParams.get('invite_token');
+    if (!t) return;
+    // Jeton adres cubugunda kalmasin: gecmise ve ekran goruntusune sizmasin.
+    sessionStorage.setItem(DAVET_SAKLAMA, t);
+    url.searchParams.delete('invite_token');
+    history.replaceState({}, '', url.pathname + url.search);
+}
+
+async function bekleyenDavetiIsle() {
+    const t = sessionStorage.getItem(DAVET_SAKLAMA);
+    if (!t) return false;
+
+    try {
+        const r = await fetch('/api/org/accept', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: t })
+        });
+        const j = await r.json().catch(() => ({}));
+
+        if (r.status === 401) return false;      // once giris yapilsin, jeton dursun
+
+        // 403 = davet baska bir adrese gonderilmis. Ortak bilgisayarda patron
+        // giriskken calisanin baglantiyi acmasi tipik durum. Jetonu ATMIYORUZ:
+        // dogru hesapla girince kaldigi yerden devam etsin, yoksa davet
+        // baglantisi tek tiklamada yanip kul oluyordu.
+        if (r.status === 403) {
+            alert((j.message || 'Bu davet başka bir hesaba gönderilmiş.') +
+                  '\n\nÇıkış yapıp kendi hesabınızla giriş yapın; davet sizi bekliyor olacak.');
+            return false;
+        }
+
+        sessionStorage.removeItem(DAVET_SAKLAMA);
+        if (!r.ok) { alert(j.message || 'Davet kabul edilemedi.'); return false; }
+
+        // Ekip degisti: tarayicidaki onceki hesabin verisi artik gecersiz.
+        alert('✓ "' + (j.orgName || 'Ekip') + '" ekibine katıldınız.');
+        resetLocalData();
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// ====================================
 // OTURUM / UYELIK
 // ====================================
 // Hangi kullanicinin verisinin tarayicida durdugunu isaretler. Bilerek `teklif_`
@@ -2452,7 +2650,39 @@ function ensureCustomerFromProposal(teklif) {
     updateCustomerDatalist();
 }
 
-window.saveCurrentProposal = function () {
+// Teklif kodu unsuzlerden turetiliyor ve CAKISABILIYOR: "Ali Yilmaz" ile
+// "Ela Yalman" ikisi de LYLM veriyor. Ayni musteri+proje icin surum numarasi
+// zaten artiyor, ama FARKLI musteriler ayni kodu uretince iki teklif ayni
+// numarayi tasiyordu.
+//
+// Bu yalnizca karisiklik degil, veri kaybi riskiydi: sunucudaki teklif
+// tablosunda (org_id, code) benzersiz; ayni kodlu ikinci teklif tum kaydetme
+// islemini dusurur, yani o gonderimde HICBIR teklif kaydedilmezdi.
+//
+// Once yerel listeye, sonra sunucuya soruyoruz. Sunucuyu da sormamizin sebebi:
+// ekip arkadasimiz henuz bizim cekmedigimiz bir teklif kaydetmis olabilir.
+async function benzersizTeklifKodu(temel, teklifId) {
+    const yereldeVar = k => state.savedProposals.some(
+        pr => pr.code === k && String(pr.id) !== String(teklifId || '')
+    );
+
+    let kod = temel, n = 1;
+    while (yereldeVar(kod) && n < 50) { n++; kod = `${temel}-${n}`; }
+
+    try {
+        for (let i = 0; i < 20; i++) {
+            const r = await fetch('/api/data/proposals/code-available?code=' +
+                encodeURIComponent(kod) + '&id=' + encodeURIComponent(teklifId || ''));
+            if (!r.ok) break;                     // uc yoksa yerel kontrol yeterli
+            if ((await r.json()).available) break;
+            n++; kod = `${temel}-${n}`;
+        }
+    } catch (e) { /* cevrimdisi: yerel kontrolle devam */ }
+
+    return kod;
+}
+
+window.saveCurrentProposal = async function () {
     if (!state.customerName) return alert('Lütfen müşteri adını girin.');
 
     // Important: Always get next version to prevent overwriting
@@ -2460,7 +2690,7 @@ window.saveCurrentProposal = function () {
 
     const clientCode = getConsonants(state.customerName);
     const projectCode = getConsonants(state.projectName);
-    const code = `${clientCode}-${projectCode}-V${state.version}`;
+    const code = await benzersizTeklifKodu(`${clientCode}-${projectCode}-V${state.version}`);
 
     const serviceTotal = state.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const productTotal = state.productCart.reduce((sum, item) => sum + (item.price * item.qty), 0);
@@ -2788,7 +3018,10 @@ window.switchTab = (n) => {
         els.tabKanban.classList.remove('hidden');
         renderKanban();
     }
-    if (n === 'settings') els.tabSettings.classList.remove('hidden');
+    if (n === 'settings') {
+        els.tabSettings.classList.remove('hidden');
+        ekibiYukle();   // her acilista tazele: davetler ve uyeler degismis olabilir
+    }
 };
 
 function renderReferencesGrid() {
@@ -4089,8 +4322,9 @@ function renderStatusChart(kpis) {
 }
 
 async function boot() {
-    // 0) E-postadaki dogrulama baglantisindan gelinmis olabilir.
+    // 0) E-postadaki dogrulama ya da ekip daveti baglantisindan gelinmis olabilir.
     const verified = await consumeVerifyTokenFromUrl();
+    davetJetonunuYakala();
 
     // 1) Kim giris yapmis?
     currentUser = await fetchMe();
@@ -4104,6 +4338,12 @@ async function boot() {
     //    Aksi halde asagidaki senkron, onceki kullanicinin verisini bu hesaba yazar.
     if (localStorage.getItem(SESSION_USER_KEY) !== String(currentUser.id)) {
         resetLocalData();
+        localStorage.setItem(SESSION_USER_KEY, String(currentUser.id));
+    }
+
+    // 2.5) Bekleyen ekip daveti varsa simdi kabul et. Veri yuklemeden ONCE
+    //      olmali: kabul, hangi organizasyonun verisini cekecegimizi degistirir.
+    if (await bekleyenDavetiIsle()) {
         localStorage.setItem(SESSION_USER_KEY, String(currentUser.id));
     }
 
@@ -4216,7 +4456,9 @@ async function sendProposalPdf(btn) {
                 customerEmail,
                 customerName: state.customerName || '',
                 projectName: state.projectName || '',
-                fileName: proposalFileName()
+                fileName: proposalFileName(),
+                // Gonderim kaydinin hangi teklife ait oldugunu bilmesi icin.
+                proposalCode: (els.propFullCode && els.propFullCode.textContent) || ''
             })
         });
         const data = await res.json().catch(() => ({}));

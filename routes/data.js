@@ -187,14 +187,35 @@ router.put('/proposals', (req, res) => {
                     status = excluded.status, payload = excluded.payload,
                     updated_at = excluded.updated_at
             `);
+            // (org_id, code) benzersiz. Gelen listede ayni kod iki kez varsa
+            // tek bir INSERT patlar ve TUM islem geri alinir; yani bir kodun
+            // tekrarlanmasi yuzunden kullanicinin butun teklifleri kaydedilmez
+            // olurdu. Istemci kodu benzersizlestiriyor, burada da ikinci bir
+            // kalkan tutuyoruz: tekrari reddetmek yerine yeniden adlandirip
+            // kaydediyoruz ve durumu yanitta bildiriyoruz.
+            const gorulen = new Set();
+            const yenidenAdlandirilan = [];
             for (const t of list) {
                 if (!t || !t.code) continue;
-                up.run(String(t.id), orgId, t.code, t.customerName || '', t.projectName || '',
-                       t.total || 0, t.status || 'Beklemede', JSON.stringify(t),
+                let kod = String(t.code);
+                if (gorulen.has(kod)) {
+                    let n = 1;
+                    while (gorulen.has(`${kod}-${++n}`) && n < 100);
+                    yenidenAdlandirilan.push({ eski: kod, yeni: `${kod}-${n}` });
+                    kod = `${kod}-${n}`;
+                }
+                gorulen.add(kod);
+                const govde = Object.assign({}, t, { code: kod });
+                up.run(String(t.id), orgId, kod, t.customerName || '', t.projectName || '',
+                       t.total || 0, t.status || 'Beklemede', JSON.stringify(govde),
                        t.createdBy || req.user.id, t.createdAt || now, now);
             }
+            if (yenidenAdlandirilan.length) {
+                console.warn('Tekrar eden teklif kodu yeniden adlandirildi:', yenidenAdlandirilan);
+                req._yenidenAdlandirilan = yenidenAdlandirilan;
+            }
         })();
-        res.json({ ok: true, count: list.length });
+        res.json({ ok: true, count: list.length, renamed: req._yenidenAdlandirilan || [] });
     } catch (err) {
         console.error('Teklif yazma hatasi:', err);
         res.status(500).json({ message: 'Teklifler kaydedilemedi.' });

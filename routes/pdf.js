@@ -5,6 +5,7 @@ const { sendProposalEmail, isMailConfigured } = require('../services/mail');
 const gate = require('../gate');
 const { requireAuth } = require('../services/session');
 const quota = require('../services/quota');
+const db = require('../db_scripts/init');
 
 // ---------------------------------------------------------------------------
 // Headless Chromium (Puppeteer) — lazy singleton so we launch the browser once
@@ -326,10 +327,32 @@ router.post('/preview', pdfLimiter, quota.enforce('pdf'), async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// Gonderim kaydi
+// ---------------------------------------------------------------------------
+// "Bu teklifi kim, ne zaman, kime yolladi" sorusunun cevabi hicbir yerde
+// tutulmuyordu: gonder ve unut. Ekip calismasinda bu, ayni musteriye iki kez
+// teklif gitmesine ya da "ben yollamistim" tartismasina yol aciyor.
+//
+// Kayit basarisiz olsa bile ana islem bozulmaz: e-posta gitmisken kaydi
+// tutamadik diye kullaniciya hata donmek yanlis olurdu.
+function gonderimYaz(req, kod, eposta, durum, hata) {
+    try {
+        if (!req.user || !req.user.org_id) return;
+        db.prepare(`
+            INSERT INTO proposal_sends (org_id, proposal_code, to_email, sent_by, sent_at, status, error)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(req.user.org_id, kod || null, eposta, req.user.id, Date.now(), durum,
+               hata ? String(hata).slice(0, 500) : null);
+    } catch (e) {
+        console.error('Gonderim kaydi yazilamadi:', e.message);
+    }
+}
+
 // POST /api/pdf/send -> render the PDF and email it to the customer as attachment.
 router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), async (req, res) => {
     try {
-        const { html, customerEmail, customerName, projectName, message, fileName, senderName } = req.body;
+        const { html, customerEmail, customerName, projectName, message, fileName, senderName, proposalCode } = req.body;
         if (!html) return res.status(400).json({ message: 'Teklif içeriği (html) gerekli' });
         if (!customerEmail) return res.status(400).json({ message: 'Müşteri e-posta adresi gerekli' });
 
@@ -338,6 +361,7 @@ router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), a
         }
 
         const pdf = await renderPdf(html, getOrigin(req), req.headers.cookie);
+        try {
         await sendProposalEmail({
             to: customerEmail,
             customerName,
@@ -350,6 +374,14 @@ router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), a
             senderName: senderName || req.user.company_name || undefined,
             replyTo: req.user.email
         });
+        } catch (mailErr) {
+            // Basarisiz gonderim de kayda gecer. Aksi halde "yolladim saniyordum"
+            // durumu gorunmez olur; kayitta yalnizca basarililar dururdu.
+            gonderimYaz(req, proposalCode, customerEmail, 'failed', mailErr.message);
+            throw mailErr;
+        }
+
+        gonderimYaz(req, proposalCode, customerEmail, 'sent', null);
 
         res.json({ message: `Teklif PDF olarak ${customerEmail} adresine gönderildi.` });
     } catch (err) {
