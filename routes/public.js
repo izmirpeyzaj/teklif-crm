@@ -164,11 +164,29 @@ function onaySayfasi(b, token) {
   body { margin:0 !important; padding:0 !important; display:block !important;
          background:#eef2f7 !important; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; color:#0f172a; }
   .sarmal { max-width:860px; margin:0 auto; padding:18px 14px 60px; }
-  .kagit { background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(15,23,42,.09); }
+  /* Teklif kagidi A4 genisliginde SABIT (794px). Telefonda oldugu gibi
+     birakinca musteri teklifin sag tarafini goremiyordu — fiyat sutunu ve
+     toplamlar ekran disinda kaliyordu. Dar ekranda kagidi oransal kucultup
+     sarmaliyi ona gore kisaltiyoruz (asagidaki kagidiOlcekle). */
+  .kagit-sarmal { overflow:hidden; border-radius:12px; box-shadow:0 4px 20px rgba(15,23,42,.09); }
+  /* Genislik BILEREK sabit (A4). style.css'in mobil kurallari kagidi daraltip
+     icerigi yeniden akitiyordu: "TEKLIF NO" alt alta iniyor, musteri adi
+     ortadan bolunuyor, teklif dagilmis gorunuyordu. Musteri, PDF'te ne
+     gorecekse onun aynisini gormeli; dar ekranda genisligi degil OLCEGI
+     kuculttuyoruz. */
+  .kagit { background:#fff; transform-origin:top left; width:794px; max-width:none; }
   .kagit img { max-width:100%; height:auto; }
   .kagit table { width:100%; border-collapse:collapse; }
   .ust { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
-  @media print { .karar, .ust { display:none !important; } body { background:#fff; } .kagit { box-shadow:none; } }
+  /* Yazdirirken ekran icin uygulanan kucultmeyi GERI AL: kagit kagida tam
+     boyunda basilmali. Aksi halde telefondan yazdiran musteri, sayfanin sol
+     ust kosesine sikismis kucuk bir teklif alirdi. */
+  @media print {
+    .karar, .ust { display:none !important; }
+    body { background:#fff; }
+    .kagit-sarmal { box-shadow:none; height:auto !important; overflow:visible; }
+    .kagit { transform:none !important; }
+  }
 </style></head>
 <body>
 <div class="sarmal">
@@ -182,10 +200,41 @@ function onaySayfasi(b, token) {
 
   <div class="karar">${durumKutusu}</div>
 
-  <div class="kagit">${b.html}</div>
+  <div class="kagit-sarmal"><div class="kagit">${b.html}</div></div>
 </div>
 
 <script>
+// Teklif kagidini dar ekrana sigdir.
+//
+// Kagit A4 genisliginde sabit; telefonda sagi kirpiliyor ve musteri fiyat
+// sutununu goremiyordu. Yatay kaydirma birakmak yerine oransal kucultuyoruz:
+// teklif tek bakista, bozulmadan gorunsun. Sarmalinin yuksekligini de ayni
+// oranda kisaltiyoruz, yoksa altta bos beyaz alan kaliyor.
+(function () {
+  var kagit = document.querySelector('.kagit');
+  var sarmal = document.querySelector('.kagit-sarmal');
+  if (!kagit || !sarmal) return;
+
+  function olcekle() {
+    kagit.style.transform = 'none';
+    sarmal.style.height = '';
+    var kagitGenislik = kagit.offsetWidth || kagit.scrollWidth;
+    var alan = sarmal.clientWidth;
+    if (!kagitGenislik || kagitGenislik <= alan) return;   // sigiyorsa dokunma
+    var oran = alan / kagitGenislik;
+    kagit.style.transform = 'scale(' + oran + ')';
+    sarmal.style.height = (kagit.scrollHeight * oran) + 'px';
+  }
+
+  olcekle();
+  window.addEventListener('resize', olcekle);
+  // Gorseller yuklendikce yukseklik degisiyor; yeniden hesapla.
+  window.addEventListener('load', olcekle);
+  document.querySelectorAll('.kagit img').forEach(function (g) {
+    if (!g.complete) g.addEventListener('load', olcekle);
+  });
+})();
+
 (function () {
   var tuval = document.getElementById('imzaAlani');
   if (!tuval) return;
