@@ -78,7 +78,7 @@ router.use(requireOrg);
 // Ekip bilgisi + uyeler + bekleyen davetler
 router.get('/', (req, res) => {
     const orgId = req.user.org_id;
-    const org = db.prepare('SELECT id, name, owner_user_id, created_at FROM organizations WHERE id = ?').get(orgId);
+    const org = db.prepare('SELECT id, name, owner_user_id, created_at, member_sees_profit FROM organizations WHERE id = ?').get(orgId);
 
     const members = db.prepare(`
         SELECT m.user_id, m.role, m.joined_at, u.email, u.display_name, u.email_verified
@@ -94,6 +94,25 @@ router.get('/', (req, res) => {
     `).all(orgId, Date.now());
 
     res.json({ org, members, invites, me: { id: req.user.id, role: req.user.role } });
+});
+
+// Ekip ayarlari (yalnizca sahip).
+// Su an tek ayar var: calisanlar maliyet/kar gorsun mu. Kapatildiginda sunucu
+// maliyeti yanittan cikarir (bkz. routes/data.js maliyetGorebilir) — arayuzde
+// gizlemek yeterli olmazdi.
+router.put('/settings', requireOwner, (req, res) => {
+    const { memberSeesProfit } = req.body || {};
+    if (typeof memberSeesProfit !== 'boolean') {
+        return res.status(400).json({ message: 'memberSeesProfit (true/false) gerekli.' });
+    }
+    try {
+        db.prepare('UPDATE organizations SET member_sees_profit = ? WHERE id = ?')
+          .run(memberSeesProfit ? 1 : 0, req.user.org_id);
+        res.json({ ok: true, memberSeesProfit });
+    } catch (err) {
+        console.error('Ekip ayari hatasi:', err);
+        res.status(500).json({ message: 'Ayar kaydedilemedi.' });
+    }
 });
 
 // Davet gonder (yalnizca sahip)

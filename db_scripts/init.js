@@ -282,6 +282,21 @@ db.exec(`
 
 // Her kullaniciya kendi organizasyonunu ver ve blok verisini yeni yapiya tasi.
 // Idempotent: zaten organizasyonu olan kullanici atlanir.
+// Ekipteki calisanlar maliyet ve kar marjini gorsun mu?
+//
+// Varsayilan EVET: ekip birlikte fiyatlandirma yapabilsin diye. Ama her isletme
+// boyle calismaz — cogu patron calisanin marji gormesini istemez. Bu yuzden
+// sahip kapatabiliyor.
+//
+// KRITIK: bu ayar yalnizca arayuzde gizlemekle yetinemez. Kapaliyken sunucu,
+// maliyeti ve kar bilgisini yanittan CIKARIR (bkz. routes/data.js); aksi halde
+// calisan tarayici konsolunu acip ham veriden okurdu.
+const orgCols = db.prepare("PRAGMA table_info(organizations)").all().map(c => c.name);
+if (!orgCols.includes('member_sees_profit')) {
+    db.exec("ALTER TABLE organizations ADD COLUMN member_sees_profit INTEGER NOT NULL DEFAULT 1");
+    console.log('organizations.member_sees_profit eklendi');
+}
+
 function ensureOrgFor(userId) {
     const mevcut = db.prepare('SELECT org_id FROM org_members WHERE user_id = ?').get(userId);
     if (mevcut) return mevcut.org_id;

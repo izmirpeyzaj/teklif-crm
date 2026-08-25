@@ -19,6 +19,38 @@ const { requireOrg } = require('../services/session');
 //     baskasi degistirmisse 409 doner ve kullaniciya "yeniden yukle" denir.
 //     Sessiz kayip yerine gorunur uyari.
 
+// ---------------------------------------------------------------------------
+// Maliyet gorunurlugu
+// ---------------------------------------------------------------------------
+// Sahip her zaman gorur. Ekip uyesi ancak organizasyon ayari aciksa gorur.
+//
+// Bu kontrolun SUNUCUDA olmasi sart: arayuzde gizlemek, tarayici konsolunu
+// acan bir calisan icin hicbir sey ifade etmez. Kapaliyken maliyet alanlari
+// yanittan tamamen cikariliyor.
+//
+// Ozel not (internalNote) bu ayarin DISINDA: o "ekip ici bilgi", maliyet degil.
+// Kullanici ikisini ayri istemisti.
+function maliyetGorebilir(user) {
+    if (!user) return false;
+    if (user.role === 'owner') return true;
+    const org = db.prepare('SELECT member_sees_profit FROM organizations WHERE id = ?').get(user.org_id);
+    return !org || org.member_sees_profit !== 0;
+}
+
+// Maliyet alanlarini teklif govdesinden temizler (kopya uzerinde calisir).
+function maliyetiGizle(t) {
+    const temiz = Object.assign({}, t);
+    const sil = dizi => (dizi || []).map(i => {
+        const k = Object.assign({}, i);
+        delete k.cost;
+        return k;
+    });
+    temiz.items = sil(t.items);
+    temiz.products = sil(t.products);
+    temiz.maliyetGizli = true;   // arayuz bunu gorup kar panelini kapatiyor
+    return temiz;
+}
+
 router.use(requireOrg);
 
 const IZINLI_ANAHTAR = new Set(['company', 'services', 'products', 'refs', 'kanban', 'price_history']);
@@ -47,6 +79,8 @@ router.get('/', (req, res) => {
 
         // Teklifin tum alanlari payload'da; ustune "kim olusturdu" bilgisini
         // ekliyoruz ki arayuz gosterebilsin.
+        const gorebilir = maliyetGorebilir(req.user);
+
         const proposals = db.prepare(`
             SELECT p.payload, p.status, p.created_by, p.created_at,
                    u.email AS creator_email, u.display_name AS creator_name
@@ -60,10 +94,10 @@ router.get('/', (req, res) => {
             t.status = r.status;
             t.createdBy = r.created_by;
             t.createdByName = r.creator_name || r.creator_email || null;
-            return t;
+            return gorebilir ? t : maliyetiGizle(t);
         }).filter(Boolean);
 
-        res.json({ data, versions, customers, proposals });
+        res.json({ data, versions, customers, proposals, canSeeProfit: gorebilir });
     } catch (err) {
         console.error('Veri okuma hatasi:', err);
         res.status(500).json({ message: 'Veri okunamadi.' });
@@ -168,6 +202,32 @@ router.put('/proposals', (req, res) => {
     try {
         const orgId = req.user.org_id;
         const now = Date.now();
+        const gorebilir = maliyetGorebilir(req.user);
+
+        // Maliyeti goremeyen kullanici, maliyetsiz bir kopyayi geri gonderir.
+        // Oldugu gibi yazsaydik o teklifin maliyeti SILINIRDI: calisan teklifi
+        // acip kaydettiginde patronun girdigi maliyet ucup giderdi. Bu yuzden
+        // kaydetmeden once mevcut govdedeki maliyetleri geri koyuyoruz.
+        const eskiGovdeler = new Map();
+        if (!gorebilir) {
+            for (const r of db.prepare('SELECT id, payload FROM proposals WHERE org_id = ?').all(orgId)) {
+                try { eskiGovdeler.set(String(r.id), JSON.parse(r.payload)); } catch (e) { /* bozuk kayit: atla */ }
+            }
+        }
+        const maliyetiGeriKoy = (t) => {
+            const eski = eskiGovdeler.get(String(t.id));
+            if (!eski) return t;
+            const birlestir = (yeniDizi, eskiDizi) => (yeniDizi || []).map(i => {
+                const e = (eskiDizi || []).find(x => String(x.id) === String(i.id));
+                return (e && e.cost != null) ? Object.assign({}, i, { cost: e.cost }) : i;
+            });
+            const g = Object.assign({}, t);
+            g.items = birlestir(t.items, eski.items);
+            g.products = birlestir(t.products, eski.products);
+            delete g.maliyetGizli;
+            return g;
+        };
+
         db.transaction(() => {
             const gelenIds = new Set(list.map(t => String(t.id)));
             for (const row of db.prepare('SELECT id FROM proposals WHERE org_id = ?').all(orgId)) {
@@ -205,7 +265,8 @@ router.put('/proposals', (req, res) => {
                     kod = `${kod}-${n}`;
                 }
                 gorulen.add(kod);
-                const govde = Object.assign({}, t, { code: kod });
+                const temel = gorebilir ? t : maliyetiGeriKoy(t);
+                const govde = Object.assign({}, temel, { code: kod });
                 up.run(String(t.id), orgId, kod, t.customerName || '', t.projectName || '',
                        t.total || 0, t.status || 'Beklemede', JSON.stringify(govde),
                        t.createdBy || req.user.id, t.createdAt || now, now);

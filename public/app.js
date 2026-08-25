@@ -43,6 +43,7 @@ const ORG_KEYS = {
 };
 
 let _versions = {};          // anahtar -> sunucudaki surum
+let _maliyetGorunur = true;  // sunucudan gelir; ekip uyesine kapatilmis olabilir
 let _catismaBildirildi = false;
 
 function setSyncStatus(s) {
@@ -139,6 +140,9 @@ async function loadOrgData() {
     const j = await r.json();
 
     _versions = j.versions || {};
+    // Sunucu karar veriyor. Arayuz yalnizca ona uyuyor; gizleme kararini
+    // istemciye birakmak, konsolu acan calisan icin hicbir sey ifade etmezdi.
+    _maliyetGorunur = j.canSeeProfit !== false;
 
     clearTeklifKeys();
     for (const [blobKey, orgKey] of Object.entries(ORG_KEYS)) {
@@ -306,7 +310,24 @@ function ekibiCiz() {
             '<button class="btn btn-secondary" style="padding:5px 10px; font-size:.76rem; white-space:nowrap;" onclick="davetiIptalEt(\'' + kacisliMetin(d.email) + '\')">İptal</button>' +
         '</div>').join('');
 
-    const sahipBolumu =
+    const gorunurlukAnahtari = _ekip.org
+        ? '<div style="margin-top:18px; padding:12px 14px; background:var(--bg-soft, #f8fafc); border:1px solid var(--border); border-radius:8px;">' +
+              '<label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">' +
+                  '<input type="checkbox" id="ekipKarGorunur" style="margin-top:3px;" ' +
+                      (_ekip.org.member_sees_profit !== 0 ? 'checked' : '') +
+                      ' onchange="karGorunurlugunuKaydet(this.checked)">' +
+                  '<span>' +
+                      '<span style="font-size:.86rem; font-weight:600;">Ekip üyeleri maliyet ve kâr marjını görsün</span>' +
+                      '<span style="display:block; font-size:.76rem; color:var(--text-muted); margin-top:3px;">' +
+                          'Kapatırsanız çalışanlarınız maliyet alanlarını ve kâr analizini göremez. ' +
+                          'Girdiğiniz maliyetler silinmez, sadece gizlenir. Siz her zaman görürsünüz.</span>' +
+                  '</span>' +
+              '</label>' +
+              '<div id="ekipAyarSonuc" style="margin-top:6px; font-size:.76rem;"></div>' +
+          '</div>'
+        : '';
+
+    const sahipBolumu = gorunurlukAnahtari +
         '<div style="margin-top:18px;">' +
             '<label style="font-size:.84rem; font-weight:600;">Yeni kişi davet et</label>' +
             '<div style="display:flex; gap:8px; margin-top:6px;">' +
@@ -367,6 +388,24 @@ window.ekibeDavetGonder = async () => {
         }
     } catch (e) {
         sonuc.innerHTML = '<span style="color:#dc2626; font-size:.8rem;">Bağlantı hatası.</span>';
+    }
+};
+
+window.karGorunurlugunuKaydet = async (acik) => {
+    const kutu = document.getElementById('ekipAyarSonuc');
+    if (kutu) kutu.innerHTML = '<span class="hint">Kaydediliyor…</span>';
+    try {
+        const r = await fetch('/api/org/settings', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ memberSeesProfit: acik })
+        });
+        if (!r.ok) throw new Error('kaydedilemedi');
+        if (_ekip && _ekip.org) _ekip.org.member_sees_profit = acik ? 1 : 0;
+        if (kutu) kutu.innerHTML = acik
+            ? '<span style="color:#16a34a;">✓ Ekip üyeleri kârı görebilir.</span>'
+            : '<span style="color:#16a34a;">✓ Kâr yalnızca size görünür. Ekip üyeleri bir sonraki girişlerinde güncellenir.</span>';
+    } catch (e) {
+        if (kutu) kutu.innerHTML = '<span style="color:#dc2626;">Kaydedilemedi.</span>';
     }
 };
 
@@ -2106,7 +2145,7 @@ function renderCustomerList() {
             ? `<div style="font-size:.72rem; color:var(--text-muted); margin-top:3px; display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
                    <span>${ozet.adet} teklif · ${formatCurrency(ozet.tutar)}</span>
                    ${ozet.kabul ? `<span style="color:#16a34a;">✓ ${ozet.kabul} kabul · ${formatCurrency(ozet.kabulTutar)}</span>` : ''}
-                   ${ozet.hasCost ? `<span title="Toplam kâr — müşteriye gösterilmez" style="font-weight:700; color:${ozet.kar >= 0 ? '#16a34a' : '#dc2626'};">🔒 ${formatCurrency(ozet.kar)}</span>` : ''}
+                   ${(_maliyetGorunur && ozet.hasCost) ? `<span title="Toplam kâr — müşteriye gösterilmez" style="font-weight:700; color:${ozet.kar >= 0 ? '#16a34a' : '#dc2626'};">🔒 ${formatCurrency(ozet.kar)}</span>` : ''}
                </div>`
             : '';
 
@@ -2385,6 +2424,7 @@ function teklifKar(t) {
 
 // Kucuk kar rozeti — kanban kartlari ve listelerde kullanilir.
 function karRozeti(k, kucuk) {
+    if (!_maliyetGorunur) return '';
     if (!k || !k.hasCost) return '';
     const renk = k.profit >= 0 ? '#16a34a' : '#dc2626';
     const fs = kucuk ? '.66rem' : '.75rem';
@@ -2411,7 +2451,7 @@ function renderCart() {
                     <span>₺ / ${item.unit}</span>
                 </div>
                 ${priceHintHtml(item)}
-                <div style="display:flex; align-items:center; gap:5px; margin-top:6px;">
+                <div style="display:flex; align-items:center; gap:5px; margin-top:6px; ${_maliyetGorunur ? '' : 'display:none;'}">
                     <span style="font-size:.72rem; color:#94a3b8;">Maliyet:</span>
                     <input type="number" value="${item.cost != null && item.cost !== '' ? item.cost : ''}" placeholder="0" class="form-control" style="width:80px; padding:4px 8px; font-size:.85rem; border-color:#e2e8f0;" title="Birim maliyet — yalnızca size görünür, müşteriye gitmez" onchange="updateItemCost('${item.id}', this.value)">
                     <span style="font-size:.72rem; color:#94a3b8;">₺ / ${item.unit}</span>
@@ -2464,6 +2504,8 @@ function renderCostPanel() {
         panel.setAttribute('data-internal', 'kar-analizi');
         if (els.cartContainer.parentNode) els.cartContainer.parentNode.appendChild(panel);
     }
+    // Maliyet gormeye yetkisi olmayan kullaniciya panel hic gosterilmiyor.
+    if (!_maliyetGorunur) { panel.style.display = 'none'; return; }
     if (!state.cart.length && !state.productCart.length) { panel.style.display = 'none'; return; }
     const k = hesaplaKar(state.cart, state.productCart, state.discountType, state.discountValue);
     const { revenue, cost, profit, margin, hasCost } = k;
@@ -3201,6 +3243,14 @@ function getUrgencyStats(updatedAt) {
 // revizyonlarini da saymak toplami sisirirdi.
 function kartKumesiToplam(cards) {
     let tutar = 0, kar = 0, maliyetli = 0;
+    if (!_maliyetGorunur) {
+        (cards || []).forEach(card => {
+            if (!card.proposals || !card.proposals.length) return;
+            const p = state.savedProposals.find(sp => sp.code === card.proposals[card.proposals.length - 1]);
+            if (p) tutar += parseFloat(p.total) || 0;
+        });
+        return { tutar, kar: 0, maliyetli: 0 };
+    }
     (cards || []).forEach(card => {
         if (!card.proposals || !card.proposals.length) return;
         const kod = card.proposals[card.proposals.length - 1];
@@ -3833,7 +3883,7 @@ function renderProductCart() {
                     <input type="number" value="${item.price}" class="price-input form-control" style="width:80px;" onchange="updateProductPrice('${item.id}', this.value)">
                     <span>₺ / ${item.unit}</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:5px; margin-top:6px;">
+                <div style="display:flex; align-items:center; gap:5px; margin-top:6px; ${_maliyetGorunur ? '' : 'display:none;'}">
                     <span style="font-size:.72rem; color:#94a3b8;">Maliyet:</span>
                     <input type="number" value="${item.cost != null && item.cost !== '' ? item.cost : ''}" placeholder="0" class="form-control" style="width:80px; padding:4px 8px; font-size:.85rem; border-color:#e2e8f0;" title="Birim maliyet — yalnızca size görünür, müşteriye gitmez" onchange="updateProductCost('${item.id}', this.value)">
                     <span style="font-size:.72rem; color:#94a3b8;">₺ / ${item.unit}</span>
