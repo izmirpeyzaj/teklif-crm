@@ -149,6 +149,16 @@ db.prepare('DELETE FROM auth_tokens WHERE expires_at < ?').run(Date.now());
 function claimLegacySync(userId) {
     const legacy = db.prepare('SELECT data, updated_at FROM sync_store WHERE id = 1').get();
     if (!legacy || !legacy.data) return false;
+
+    // Eski veri, tek isletmelik donemin GERCEK musteri ve tekliflerini iceriyor.
+    // "Ilk kayit olan devralir" kurali, site herkese acikken bir yabancinin once
+    // davranip bu verinin tamamini almasi demekti. OWNER_EMAIL tanimliysa yalnizca
+    // o adres devralabilir; kayit sirasi onemini yitirir.
+    const owner = (process.env.OWNER_EMAIL || '').toLowerCase().trim();
+    if (owner) {
+        const u = db.prepare('SELECT email FROM users WHERE id = ?').get(userId);
+        if (!u || String(u.email).toLowerCase() !== owner) return false;
+    }
     const already = db.prepare('SELECT 1 FROM user_sync WHERE user_id = ?').get(userId);
     if (already) return false;
     db.prepare('INSERT INTO user_sync (user_id, data, updated_at) VALUES (?, ?, ?)')
