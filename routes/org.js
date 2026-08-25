@@ -78,7 +78,9 @@ router.use(requireOrg);
 // Ekip bilgisi + uyeler + bekleyen davetler
 router.get('/', (req, res) => {
     const orgId = req.user.org_id;
-    const org = db.prepare('SELECT id, name, owner_user_id, created_at, member_sees_profit FROM organizations WHERE id = ?').get(orgId);
+    const org = db.prepare(`SELECT id, name, owner_user_id, created_at, member_sees_profit,
+                            reminder_enabled, reminder_days
+                     FROM organizations WHERE id = ?`).get(orgId);
 
     const members = db.prepare(`
         SELECT m.user_id, m.role, m.joined_at, u.email, u.display_name, u.email_verified
@@ -101,14 +103,25 @@ router.get('/', (req, res) => {
 // maliyeti yanittan cikarir (bkz. routes/data.js maliyetGorebilir) — arayuzde
 // gizlemek yeterli olmazdi.
 router.put('/settings', requireOwner, (req, res) => {
-    const { memberSeesProfit } = req.body || {};
-    if (typeof memberSeesProfit !== 'boolean') {
-        return res.status(400).json({ message: 'memberSeesProfit (true/false) gerekli.' });
-    }
+    const { memberSeesProfit, reminderEnabled, reminderDays } = req.body || {};
     try {
-        db.prepare('UPDATE organizations SET member_sees_profit = ? WHERE id = ?')
-          .run(memberSeesProfit ? 1 : 0, req.user.org_id);
-        res.json({ ok: true, memberSeesProfit });
+        if (typeof memberSeesProfit === 'boolean') {
+            db.prepare('UPDATE organizations SET member_sees_profit = ? WHERE id = ?')
+              .run(memberSeesProfit ? 1 : 0, req.user.org_id);
+        }
+        if (typeof reminderEnabled === 'boolean') {
+            db.prepare('UPDATE organizations SET reminder_enabled = ? WHERE id = ?')
+              .run(reminderEnabled ? 1 : 0, req.user.org_id);
+        }
+        if (reminderDays != null) {
+            // 1-30 gun disi anlamsiz: 1 gunden kisa israrci, 30 gunden uzak
+            // hatirlatmanin karsiligi yok.
+            const g = Math.min(Math.max(parseInt(reminderDays) || 3, 1), 30);
+            db.prepare('UPDATE organizations SET reminder_days = ? WHERE id = ?').run(g, req.user.org_id);
+        }
+        const o = db.prepare('SELECT member_sees_profit, reminder_enabled, reminder_days FROM organizations WHERE id = ?')
+                    .get(req.user.org_id);
+        res.json({ ok: true, ...o });
     } catch (err) {
         console.error('Ekip ayari hatasi:', err);
         res.status(500).json({ message: 'Ayar kaydedilemedi.' });

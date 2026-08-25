@@ -15,6 +15,9 @@ const COOKIE = 'site_auth';
 // Şifresiz erişilebilecek yollar (sağlık kontrolü + giriş ucu)
 const PUBLIC_PATHS = new Set(['/api/health', '/__auth', '/__logout']);
 
+// Onay sayfasinin (bkz. routes/public.js) ihtiyac duydugu genel varliklar.
+const ACIK_VARLIK = /^\/(style\.css|images\/)/;
+
 function getCookie(header, name) {
     if (!header) return null;
     const part = header.split(';').map(s => s.trim()).find(s => s.startsWith(name + '='));
@@ -80,6 +83,15 @@ function installGate(app) {
     // Geri kalan her şeyi koru
     app.use((req, res, next) => {
         if (PUBLIC_PATHS.has(req.path)) return next();
+        // Musteri onay baglantisi kapinin disinda kalmali: teklifi alan
+        // musterinin ne hesabi ne de beta sifresi var. Baglantinin kendisi
+        // (32 baytlik jeton) zaten tek kullanimlik bir kimlik dogrulama.
+        if (req.path.startsWith('/t/')) return next();
+        // O sayfanin ihtiyac duydugu varliklar da gecmeli, yoksa musteri
+        // teklifi stilsiz ve kirik gorsellerle gorur. Bunlar sir degil:
+        // uygulamanin kendi css'i ve hazir sektor gorselleri. Kullaniciya ait
+        // yuklemeler (/uploads) bu listede DEGIL — orasi kendi korumasinda.
+        if (ACIK_VARLIK.test(req.path)) return next();
         if (getCookie(req.headers.cookie, COOKIE) === TOKEN) return next();
         if (req.path.startsWith('/api/')) return res.status(401).json({ message: 'Yetkisiz. Giriş gerekli.' });
         return res.status(401).type('html').send(loginPage());

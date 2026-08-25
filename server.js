@@ -82,11 +82,23 @@ try {
     const syncRoutes = require('./routes/sync');
     const orgRoutes = require('./routes/org');
     const dataRoutes = require('./routes/data');
+    const linkRoutes = require('./routes/links');
+    const publicRoutes = require('./routes/public');
+
+    // Musteri onay sayfasi GIRIS GEREKTIRMEZ ve kapali beta duvarinin da
+    // arkasinda kalmamali: teklifi alan musterinin hesabi yok. Bu yuzden
+    // digerlerinden once, en ustte duruyor.
+    app.use('/', publicRoutes);
 
     // Kullaniciya ait yuklemeler (AI gorselleri) statik klasorden ONCE korunur;
     // aksi halde URL'i bilen herkes baska bir isletmenin teklif gorsellerini
     // acabilirdi. Uygulamanin kendi varliklari (css, js, hazir gorseller) acik.
-    app.use('/uploads', session.requireAuth, express.static(path.join(__dirname, 'public', 'uploads')));
+    //
+    // linkVarligi: onay baglantisini acan musterinin oturumu yok ama teklifteki
+    // gorselleri gormesi lazim. Gecerli bir baglanti kurabiyesi tasiyorsa
+    // YALNIZCA o baglantinin organizasyonuna ait klasor aciliyor.
+    app.use('/uploads', publicRoutes.linkVarligi, session.requireAuth,
+            express.static(path.join(__dirname, 'public', 'uploads')));
     app.use(express.static(path.join(__dirname, 'public')));
 
     // Model adlari: gemini-2.0-* surumleri emekli edildi ve 404 donuyordu.
@@ -165,11 +177,16 @@ try {
     app.use('/api/sync', syncRoutes);
     app.use('/api/org', orgRoutes);
     app.use('/api/data', dataRoutes);
+    app.use('/api/links', linkRoutes);
 
-    // NOT: routes/services.js, routes/proposals.js, routes/kanban.js olu kod.
-    // Frontend'in tum verisi localStorage + /api/sync uzerinden akiyor; bu uclar
-    // hicbir yerden cagrilmiyor. Ilerde ilisikisel yapiya (B yolu) gecilirse
-    // temel olarak kullanilacaklar, o yuzden silinmediler ama baglanmadilar da.
+    // Otomatik hatirlatma. Organizasyon bazinda kapali gelir; kullanici
+    // Ayarlar > Ekip'ten aciyor. Mail yapilandirilmamissa hicbir sey yapmaz.
+    require('./services/reminder').basla();
+
+    // NOT: routes/services.js, routes/proposals.js, routes/kanban.js olu kod —
+    // hepsi tek kullanicili donemin semasina (users.user_id, items_json) gore
+    // yazilmis ve bagladiginda patlar. Yeni ilisikisel yapi routes/data.js'te.
+    // Silinmediler ama bilerek baglanmadilar da.
 
 } catch (err) {
     console.error("Initialization error:", err);

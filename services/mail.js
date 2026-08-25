@@ -65,29 +65,54 @@ async function sendFeedbackEmail(customerEmail, customerName, projectName, total
 /**
  * Sends a reminder email to the customer.
  */
-async function sendReminderEmail(customerEmail, customerName, projectName, total) {
+/**
+ * Cevap gelmeyen teklif icin musteriye hatirlatma.
+ *
+ * Eski surumde iki ciddi sorun vardi:
+ *   1. "Kabul Et" / "Reddet" butonlari href="#" idi. Musteri tikliyor, hicbir
+ *      sey olmuyordu — hic buton olmamasindan kotu.
+ *   2. E-posta "teklif.io Ekibi" diye imzalaniyordu. Gonderen kullanicinin
+ *      kendi firmasi olmali; musteri "teklif.io" diye bir firma tanimiyor.
+ *
+ * Onay baglantisi varsa tek bir butonla oraya yonlendiriyoruz; musteri orada
+ * hem teklifi goruyor hem imzalayip karar veriyor. Baglanti yoksa buton da yok.
+ */
+async function sendReminderEmail(customerEmail, customerName, projectName, total, opts = {}) {
+    const { senderName, replyTo, approvalLink } = opts;
+    const firma = senderName || process.env.MAIL_FROM_NAME || 'Teklif';
+    const tutar = typeof total === 'number'
+        ? total.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })
+        : (total || '');
+
+    const proje = projectName ? `<strong>${projectName}</strong> projesi için` : '';
+    const buton = approvalLink
+        ? `<div style="margin:28px 0;">
+             <a href="${approvalLink}" style="background:#16a34a; color:#fff; padding:13px 26px; text-decoration:none; border-radius:7px; display:inline-block; font-weight:600;">Teklifi görüntüle ve onayla</a>
+           </div>
+           <p style="font-size:.86rem; color:#64748b;">Buton çalışmazsa bu adresi tarayıcınıza yapıştırabilirsiniz:<br>
+             <span style="color:#2563eb; word-break:break-all;">${approvalLink}</span></p>`
+        : `<p>Kararınızı bu e-postayı yanıtlayarak iletebilirsiniz.</p>`;
+
     const mailOptions = {
-        from: `"teklif.io Hatırlatma" <${MAIL_FROM}>`,
+        from: `"${firma}" <${MAIL_FROM}>`,
         to: customerEmail,
-        subject: `Hatırlatma: Teklif Onayı Bekleniyor - ${projectName}`,
+        replyTo: replyTo || undefined,
+        subject: projectName ? `Hatırlatma: ${projectName} teklifi` : 'Teklifimiz hakkında hatırlatma',
         html: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                <h2>Sayın ${customerName},</h2>
-                <p><strong>${projectName}</strong> projesi için iletmiş olduğumuz <strong>${total}</strong> tutarındaki teklifimizle ilgili geri bildiriminizi beklemekteyiz.</p>
-                <p>Proje takvimini planlayabilmemiz adına kararnızı bize iletmenizi rica ederiz:</p>
-                <div style="margin: 30px 0;">
-                    <a href="#" style="background: #2563eb; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin-right: 10px;">Teklifi Kabul Et</a>
-                    <a href="#" style="background: #ef4444; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px;">Teklifi Reddet / Revize İste</a>
-                </div>
-                <p>Herhangi bir sorunuz varsa çekinmeden bize ulaşabilirsiniz.</p>
-                <br>
-                <p>İyi çalışmalar dileriz,<br><strong>teklif.io Ekibi</strong></p>
+            <div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding:20px; color:#0f172a; max-width:560px;">
+                <p>Sayın ${customerName || 'Yetkili'},</p>
+                <p>${proje} ilettiğimiz ${tutar ? `<strong>${tutar}</strong> tutarındaki ` : ''}teklifimizle ilgili
+                   geri bildiriminizi bekliyoruz.</p>
+                ${buton}
+                <p>Sorularınız için bu e-postayı yanıtlayabilirsiniz.</p>
+                <p style="margin-top:24px;">İyi çalışmalar,<br><strong>${firma}</strong></p>
             </div>
         `
     };
 
     return transporter.sendMail(mailOptions);
 }
+
 
 /**
  * Sends the proposal to the customer with the generated PDF attached.

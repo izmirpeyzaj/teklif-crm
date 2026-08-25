@@ -252,6 +252,136 @@ async function pullSyncOnLoad() {
 }
 
 // ====================================
+// MUSTERI ONAY BAGLANTISI
+// ====================================
+// Teklif gonderildikten sonra "kabul mu, ret mi" bilgisi telefonda kaliyor ve
+// sisteme elle isleniyordu. Bu baglantiyla musteri tarayicidan onaylayip
+// imzaliyor; teklif kendiliginden 'Kabul Edildi' oluyor.
+//
+// Baglantiya gonderdigimiz sey captureProposalHtml() ciktisi — yani PDF'e giden
+// HTML'in aynisi. Teklif govdesini (maliyet, ozel not tasiyan hâli) bilerek
+// gondermiyoruz ki sizma ihtimali dogmasin.
+
+let _sonOnayLinki = null;
+
+window.onayLinkiOlustur = async function (btn) {
+    const html = captureProposalHtml();
+    if (!html) { alert('Önce teklifi hazırlayın.'); return; }
+    if (!state.customerName) { alert('Lütfen müşteri adını girin.'); return; }
+
+    const kod = (els.propFullCode && els.propFullCode.textContent) || '';
+    if (!kod) { alert('Teklif kodu bulunamadı.'); return; }
+
+    const eski = btn ? btn.innerHTML : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Oluşturuluyor...'; }
+
+    try {
+        const r = await fetch('/api/links', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                proposalCode: kod,
+                customerName: state.customerName,
+                projectName: state.projectName || '',
+                total: parseFloat(String(document.getElementById('grandTotal').textContent).replace(/[^\d,-]/g, '').replace(',', '.')) || 0,
+                html
+            })
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) { alert(j.message || 'Bağlantı oluşturulamadı.'); return; }
+
+        _sonOnayLinki = j.link;
+        onayLinkiniGoster(j.link, j.expiresInDays);
+    } catch (e) {
+        alert('Bağlantı oluşturulamadı: ' + e.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = eski; }
+    }
+};
+
+function onayLinkiniGoster(link, gun) {
+    const kutu = document.getElementById('onayLinkiKutusu');
+    if (!kutu) return;
+    kutu.style.display = 'block';
+    kutu.innerHTML =
+        '<div style="background:#f5f3ff; border:1px solid #ddd6fe; border-radius:10px; padding:12px 14px;">' +
+            '<div style="font-size:.82rem; font-weight:600; color:#5b21b6; margin-bottom:6px;">🔗 Onay bağlantısı hazır</div>' +
+            '<input readonly value="' + kacisliMetin(link) + '" onclick="this.select()" class="form-control" ' +
+                   'style="font-size:.74rem; padding:6px 8px; margin-bottom:8px;">' +
+            '<div style="display:flex; gap:6px; flex-wrap:wrap;">' +
+                '<button class="btn" style="flex:1 1 90px; padding:7px; font-size:.78rem; background:#7c3aed; color:#fff; border:none;" onclick="onayLinkiniKopyala()">Kopyala</button>' +
+                '<button class="btn" style="flex:1 1 90px; padding:7px; font-size:.78rem; background:#25D366; color:#fff; border:none;" onclick="onayLinkiniWhatsApp()">WhatsApp</button>' +
+                '<button class="btn" style="flex:1 1 90px; padding:7px; font-size:.78rem; background:#3b82f6; color:#fff; border:none;" onclick="onayLinkiniEposta()">E-posta</button>' +
+            '</div>' +
+            '<p class="hint" style="margin:8px 0 0; font-size:.72rem;">' + (gun || 30) + ' gün geçerli. ' +
+                'Müşteri açtığında ve karar verdiğinde burada görürsünüz. ' +
+                'Yeni bağlantı oluşturursanız eskisi geçersiz olur.</p>' +
+        '</div>';
+}
+
+window.onayLinkiniKopyala = () => {
+    if (!_sonOnayLinki) return;
+    navigator.clipboard.writeText(_sonOnayLinki)
+        .then(() => alert('Bağlantı kopyalandı.'))
+        .catch(() => alert('Kopyalanamadı. Kutudaki adresi elle seçip kopyalayın.'));
+};
+
+// Musterinin telefonunu kayitlardan bul, yoksa WhatsApp'i numarasiz ac.
+function musteriTelefonu() {
+    const m = state.customers.find(c => c.name === state.customerName);
+    if (!m || !m.phone) return '';
+    let t = m.phone.replace(/\D/g, '');
+    if (t.startsWith('0')) t = t.slice(1);
+    if (!t.startsWith('90') && t.length === 10) t = '90' + t;
+    return t;
+}
+
+window.onayLinkiniWhatsApp = () => {
+    if (!_sonOnayLinki) return;
+    const tutar = document.getElementById('grandTotal').textContent;
+    const mesaj = 'Merhaba ' + (state.customerName || '') + ',\n\n' +
+        (state.projectName ? state.projectName + ' projesi için ' : '') + 'hazırladığımız teklif hazır.\n' +
+        'Toplam: ' + tutar + '\n\n' +
+        'Teklifi görüntüleyip onaylamak için:\n' + _sonOnayLinki;
+    window.open('https://wa.me/' + musteriTelefonu() + '?text=' + encodeURIComponent(mesaj), '_blank');
+};
+
+window.onayLinkiniEposta = () => {
+    if (!_sonOnayLinki) return;
+    const m = state.customers.find(c => c.name === state.customerName);
+    const tutar = document.getElementById('grandTotal').textContent;
+    const konu = (state.customerName || '') + (state.projectName ? ' - ' + state.projectName : '') + ' Teklifi';
+    const govde = 'Sayın ' + (state.customerName || 'Yetkili') + ',\n\n' +
+        (state.projectName ? state.projectName + ' projesi için ' : '') + 'hazırladığımız teklifi ekteki bağlantıdan ' +
+        'görüntüleyip onaylayabilirsiniz.\n\nToplam: ' + tutar + '\n\n' + _sonOnayLinki + '\n\nSaygılarımızla,';
+    window.location.href = 'mailto:' + ((m && m.email) || '') +
+        '?subject=' + encodeURIComponent(konu) + '&body=' + encodeURIComponent(govde);
+};
+
+// Kayitli teklifin baglanti durumu: acildi mi, karar verildi mi.
+async function onayDurumuGetir(kod) {
+    try {
+        const r = await fetch('/api/links/' + encodeURIComponent(kod));
+        if (!r.ok) return null;
+        return (await r.json()).link;
+    } catch (e) { return null; }
+}
+
+function onayDurumRozeti(l) {
+    if (!l || l.revoked_at) return '';
+    if (l.decided_at) {
+        const kabul = l.decision === 'accepted';
+        return '<span style="font-size:.7rem; font-weight:700; padding:2px 8px; border-radius:10px; white-space:nowrap; ' +
+               'background:' + (kabul ? '#dcfce7' : '#fee2e2') + '; color:' + (kabul ? '#15803d' : '#b91c1c') + ';">' +
+               (kabul ? '✓ Müşteri onayladı' : '✕ Müşteri reddetti') + '</span>';
+    }
+    if (l.opened_at) {
+        return '<span title="' + new Date(l.opened_at).toLocaleString('tr-TR') + '" style="font-size:.7rem; font-weight:600; padding:2px 8px; border-radius:10px; background:#dbeafe; color:#1d4ed8; white-space:nowrap;">' +
+               '👁 Görüntülendi' + (l.open_count > 1 ? ' (' + l.open_count + ')' : '') + '</span>';
+    }
+    return '<span style="font-size:.7rem; padding:2px 8px; border-radius:10px; background:#f1f5f9; color:#64748b; white-space:nowrap;">🔗 Link gönderildi</span>';
+}
+
+// ====================================
 // EKIP YONETIMI
 // ====================================
 // Veri artik organizasyona ait (bkz. EKIP VERI KATMANI). Bir kullanici tek bir
@@ -327,7 +457,32 @@ function ekibiCiz() {
           '</div>'
         : '';
 
-    const sahipBolumu = gorunurlukAnahtari +
+    const hatirlatmaAcik = _ekip.org && _ekip.org.reminder_enabled === 1;
+    const hatirlatmaAnahtari = _ekip.org
+        ? '<div style="margin-top:12px; padding:12px 14px; background:var(--bg-soft, #f8fafc); border:1px solid var(--border); border-radius:8px;">' +
+              '<label style="display:flex; align-items:flex-start; gap:10px; cursor:pointer;">' +
+                  '<input type="checkbox" id="ekipHatirlatma" style="margin-top:3px;" ' +
+                      (hatirlatmaAcik ? 'checked' : '') + ' onchange="hatirlatmaAyariKaydet()">' +
+                  '<span>' +
+                      '<span style="font-size:.86rem; font-weight:600;">Cevap gelmeyen tekliflere otomatik hatırlatma gönder</span>' +
+                      '<span style="display:block; font-size:.76rem; color:var(--text-muted); margin-top:3px;">' +
+                          'Gönderdiğiniz teklife karar verilmezse müşteriye <strong>tek bir</strong> hatırlatma e-postası ' +
+                          'gider. Onay bağlantısı oluşturduysanız e-postada o bağlantı yer alır.</span>' +
+                  '</span>' +
+              '</label>' +
+              '<div style="margin-top:10px; display:flex; align-items:center; gap:8px; ' + (hatirlatmaAcik ? '' : 'opacity:.45;') + '">' +
+                  '<span style="font-size:.8rem;">Kaç gün sonra:</span>' +
+                  '<input type="number" id="ekipHatirlatmaGun" min="1" max="30" class="form-control" ' +
+                         'style="width:74px; padding:5px 8px; font-size:.84rem;" ' +
+                         'value="' + ((_ekip.org && _ekip.org.reminder_days) || 3) + '" ' +
+                         (hatirlatmaAcik ? '' : 'disabled ') + 'onchange="hatirlatmaAyariKaydet()">' +
+                  '<span style="font-size:.8rem; color:var(--text-muted);">gün</span>' +
+              '</div>' +
+              '<div id="ekipHatirlatmaSonuc" style="margin-top:6px; font-size:.76rem;"></div>' +
+          '</div>'
+        : '';
+
+    const sahipBolumu = gorunurlukAnahtari + hatirlatmaAnahtari +
         '<div style="margin-top:18px;">' +
             '<label style="font-size:.84rem; font-weight:600;">Yeni kişi davet et</label>' +
             '<div style="display:flex; gap:8px; margin-top:6px;">' +
@@ -404,6 +559,32 @@ window.karGorunurlugunuKaydet = async (acik) => {
         if (kutu) kutu.innerHTML = acik
             ? '<span style="color:#16a34a;">✓ Ekip üyeleri kârı görebilir.</span>'
             : '<span style="color:#16a34a;">✓ Kâr yalnızca size görünür. Ekip üyeleri bir sonraki girişlerinde güncellenir.</span>';
+    } catch (e) {
+        if (kutu) kutu.innerHTML = '<span style="color:#dc2626;">Kaydedilemedi.</span>';
+    }
+};
+
+window.hatirlatmaAyariKaydet = async () => {
+    const acik = document.getElementById('ekipHatirlatma').checked;
+    const gun = parseInt(document.getElementById('ekipHatirlatmaGun').value) || 3;
+    const kutu = document.getElementById('ekipHatirlatmaSonuc');
+    if (kutu) kutu.innerHTML = '<span class="hint">Kaydediliyor…</span>';
+    try {
+        const r = await fetch('/api/org/settings', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reminderEnabled: acik, reminderDays: gun })
+        });
+        const j = await r.json();
+        if (!r.ok) throw new Error('kaydedilemedi');
+        if (_ekip && _ekip.org) {
+            _ekip.org.reminder_enabled = j.reminder_enabled;
+            _ekip.org.reminder_days = j.reminder_days;
+        }
+        if (kutu) kutu.innerHTML = acik
+            ? '<span style="color:#16a34a;">✓ ' + j.reminder_days + ' gün sonra hatırlatma gönderilecek.</span>'
+            : '<span style="color:#16a34a;">✓ Otomatik hatırlatma kapalı.</span>';
+        // Gun kutusunun etkinligi anahtara bagli; yeniden ciz.
+        ekibiCiz();
     } catch (e) {
         if (kutu) kutu.innerHTML = '<span style="color:#dc2626;">Kaydedilemedi.</span>';
     }

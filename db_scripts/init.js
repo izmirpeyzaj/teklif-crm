@@ -278,6 +278,45 @@ db.exec(`
         error         TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_sends_org ON proposal_sends (org_id, sent_at);
+
+    -- Musteri onay baglantisi.
+    --
+    -- Teklif gonderildikten sonra "kabul mu, ret mi" bilgisi telefonda ya da
+    -- e-postada kaliyor, sisteme elle isleniyor ya da hic islenmiyordu. Bu
+    -- baglantiyla musteri tarayicidan onaylayip imzaliyor; teklif kendiliginden
+    -- 'Kabul Edildi' oluyor ve ne zaman acildigi da goruluyor.
+    --
+    -- token_hash: jetonun kendisi degil SHA-256 ozeti saklanir (auth_tokens ve
+    -- org_invites ile ayni gerekce): veritabani sizsa bile gecerli bir onay
+    -- baglantisi uretilemez.
+    --
+    -- html: teklifin MUSTERIYE GIDEN hâli; PDF'e giden HTML'in aynisi. Govdeden
+    -- yeniden uretmek yerine bunu saklamamizin sebebi guvenlik: govde maliyet ve
+    -- ozel not tasiyor, bu HTML tasimiyor (bkz. captureProposalHtml).
+    CREATE TABLE IF NOT EXISTS proposal_links (
+        token_hash    TEXT PRIMARY KEY,
+        org_id        INTEGER NOT NULL,
+        proposal_code TEXT NOT NULL,
+        proposal_id   TEXT,
+        customer_name TEXT,
+        project_name  TEXT,
+        total         REAL,
+        html          TEXT NOT NULL,
+        created_by    INTEGER,
+        created_at    INTEGER NOT NULL,
+        expires_at    INTEGER NOT NULL,
+        opened_at     INTEGER,
+        open_count    INTEGER NOT NULL DEFAULT 0,
+        decided_at    INTEGER,
+        decision      TEXT,                      -- accepted | rejected
+        decision_note TEXT,
+        signer_name   TEXT,
+        signature     TEXT,                      -- data:image/png;base64,...
+        revoked_at    INTEGER,
+        FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_links_org ON proposal_links (org_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_links_code ON proposal_links (org_id, proposal_code);
 `);
 
 // Her kullaniciya kendi organizasyonunu ver ve blok verisini yeni yapiya tasi.
@@ -295,6 +334,19 @@ const orgCols = db.prepare("PRAGMA table_info(organizations)").all().map(c => c.
 if (!orgCols.includes('member_sees_profit')) {
     db.exec("ALTER TABLE organizations ADD COLUMN member_sees_profit INTEGER NOT NULL DEFAULT 1");
     console.log('organizations.member_sees_profit eklendi');
+}
+
+// Otomatik hatirlatma ayarlari.
+// Cevap vermeyen musteriye elle hatirlatma yazmak unutuluyor ve teklif sessizce
+// oluyor. Varsayilan KAPALI: kullanicinin haberi olmadan musterisine e-posta
+// gitmesi kabul edilemez; once bilerek acmali.
+if (!orgCols.includes('reminder_enabled')) {
+    db.exec("ALTER TABLE organizations ADD COLUMN reminder_enabled INTEGER NOT NULL DEFAULT 0");
+    console.log('organizations.reminder_enabled eklendi');
+}
+if (!orgCols.includes('reminder_days')) {
+    db.exec("ALTER TABLE organizations ADD COLUMN reminder_days INTEGER NOT NULL DEFAULT 3");
+    console.log('organizations.reminder_days eklendi');
 }
 
 function ensureOrgFor(userId) {

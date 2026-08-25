@@ -98,4 +98,4 @@ function requireOwner(req, res, next) {
     next();
 }
 
-module.exports = { COOKIE, issue, clear, currentUser, requireAuth, requireOrg, requireOwner };
+module.exports = { COOKIE, issue, clear, currentUser, requireAuth, requireOrg, requireOwner, getCookie };
