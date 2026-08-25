@@ -23,13 +23,22 @@ if (process.env.SITE_PASSWORD) {
 
 let initError = null;
 
+// Kabin ne zaman ayaga kalktigi. Yeni bir dagitimin gercekten yerini alip
+// almadigini anlamanin ikinci yolu: bu deger degismediyse eski kap duruyordur.
+const BASLAMA_ZAMANI = new Date().toISOString();
+
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'ok',
         message: 'Teklif CRM API is running',
         initError: initError,
         env: process.env.NODE_ENV,
-        nodeVersion: process.version
+        nodeVersion: process.version,
+        // Yayindaki surum. Bu alan olmadan "yeni kod gecti mi" sorusunu
+        // dogru cevaplamak mumkun degildi: derleme basarisiz olsa bile eski
+        // kap ayakta kalir ve saglik kontrolu "ok" demeye devam eder.
+        commit: process.env.SOURCE_COMMIT || 'bilinmiyor',
+        startedAt: BASLAMA_ZAMANI
     });
 });
 

@@ -29,6 +29,19 @@ RUN npm install
 # Kaynak kodun tamamını kopyala
 COPY . .
 
+# Hangi surumun yayinda oldugunu sunucunun kendisi soylesin.
+#
+# Gerekce: /api/health 200 donuyor olmasi yeni kodun yayinda oldugu anlamina
+# gelmiyor — derleme basarisiz olursa eski kap hizmet vermeye devam eder ve
+# saglik kontrolu yine "ok" der. 25 Agustos 2026'da 15 dakika boyunca eski kod
+# servis edildi ve bu fark edilmedi. Artik /api/health icindeki commit degeri
+# hangi kodun calistigini kesin soyluyor.
+#
+# Coolify derleme sirasinda SOURCE_COMMIT'i saglar; baska bir ortamda derlenirse
+# deger bos kalir ve saglik ciktisinda 'bilinmiyor' gorunur (zarari yok).
+ARG SOURCE_COMMIT=""
+ENV SOURCE_COMMIT=$SOURCE_COMMIT
+
 # Portu ayarla
 ENV PORT=3000
 EXPOSE 3000
