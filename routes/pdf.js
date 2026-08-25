@@ -144,6 +144,12 @@ async function downscaleImages(page) {
     }
 }
 
+function extractCookie(header, name) {
+    if (!header) return null;
+    const part = String(header).split(';').map(x => x.trim()).find(x => x.startsWith(name + '='));
+    return part ? part.slice(name.length + 1) : null;
+}
+
 // ---------------------------------------------------------------------------
 // Eszamanlilik siniri
 // ---------------------------------------------------------------------------
@@ -179,16 +185,16 @@ function releaseSlot() {
     else active--;
 }
 
-async function renderPdf(bodyHtml, origin) {
+async function renderPdf(bodyHtml, origin, cookieHeader) {
     await acquireSlot();
     try {
-        return await renderPdfUnthrottled(bodyHtml, origin);
+        return await renderPdfUnthrottled(bodyHtml, origin, cookieHeader);
     } finally {
         releaseSlot();
     }
 }
 
-async function renderPdfUnthrottled(bodyHtml, origin) {
+async function renderPdfUnthrottled(bodyHtml, origin, cookieHeader) {
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
@@ -204,12 +210,18 @@ async function renderPdfUnthrottled(bodyHtml, origin) {
         //     cheap same-origin URL first fixes the document origin; setContent
         //     afterwards keeps it.
         try {
-            await page.setCookie({
-                name: gate.COOKIE_NAME,
-                value: gate.TOKEN,
-                url: origin,
-                path: '/'
-            });
+            const cookies = [{ name: gate.COOKIE_NAME, value: gate.TOKEN, url: origin, path: '/' }];
+
+            // Kullanicinin kendi oturum cerezi de gerekiyor: teklife eklenen
+            // yapay zeka gorselleri /uploads altinda duruyor ve orasi girise
+            // bagli (baska bir isletmenin gorselleri URL'i bilen herkese acik
+            // olmasin diye). Bu cerez olmadan o gorseller PDF'te kaybolurdu.
+            const sessionValue = extractCookie(cookieHeader, 'session');
+            if (sessionValue) {
+                cookies.push({ name: 'session', value: sessionValue, url: origin, path: '/' });
+            }
+
+            await page.setCookie(...cookies);
             await page.goto(origin + '/api/health', {
                 waitUntil: 'domcontentloaded',
                 timeout: 15000
@@ -283,7 +295,7 @@ router.post('/preview', pdfLimiter, quota.enforce('pdf'), async (req, res) => {
         const { html, fileName } = req.body;
         if (!html) return res.status(400).json({ message: 'Teklif içeriği (html) gerekli' });
 
-        const pdf = await renderPdf(html, getOrigin(req));
+        const pdf = await renderPdf(html, getOrigin(req), req.headers.cookie);
         res.set({
             'Content-Type': 'application/pdf',
             'Content-Disposition': `inline; filename="${sanitizeFileName(fileName)}.pdf"`
@@ -318,7 +330,7 @@ router.post('/send', pdfLimiter, quota.enforce('email'), async (req, res) => {
             return res.status(503).json({ message: 'E-posta gönderimi yapılandırılmamış. .env içine SMTP_USER ve SMTP_PASS ekleyin.' });
         }
 
-        const pdf = await renderPdf(html, getOrigin(req));
+        const pdf = await renderPdf(html, getOrigin(req), req.headers.cookie);
         await sendProposalEmail({
             to: customerEmail,
             customerName,
