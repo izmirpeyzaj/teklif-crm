@@ -94,8 +94,16 @@ function yeniBaglantiUret(orgId, kod) {
         return null;
     }
 
+    // APP_ORIGIN burada ZORUNLU: bu is arka planda calisiyor, ortada bir HTTP
+    // istegi yok, yani adresi istegin host basligindan turetemeyiz. Tanimli
+    // degilse baglantiyi hic uretmiyoruz — yarim bir adresle e-posta gondermek,
+    // musterinin tikladiginda hicbir yere gitmemesi demek olurdu.
     const kok = process.env.APP_ORIGIN;
-    return kok ? kok.replace(/\/$/, '') + '/t/' + token : null;
+    if (!kok) {
+        console.warn('APP_ORIGIN tanimli degil: hatirlatma e-postasi onay baglantisi olmadan gidecek.');
+        return null;
+    }
+    return kok.replace(/\/$/, '') + '/t/' + token;
 }
 
 async function turAt() {
