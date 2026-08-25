@@ -144,7 +144,51 @@ async function downscaleImages(page) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Eszamanlilik siniri
+// ---------------------------------------------------------------------------
+// Bir PDF ~8 saniye suruyor ve her biri ayri bir Chromium sekmesi aciyor. Tek
+// kullaniciyken sorun degildi; cok kullanicida ayni anda gelen istekler sekme
+// sekme bellek yiyor ve bu VPS'te baska projeler de calisiyor. Ayni anda en
+// fazla PDF_CONCURRENCY tane render calisir, digerleri sirada bekler.
+//
+// Sira sonsuz degil: cok uzun beklemektense kullaniciya durumu soylemek daha
+// dogru, aksi halde istek proxy zaman asimina takilip sessizce olurdu.
+const PDF_CONCURRENCY = Number(process.env.PDF_CONCURRENCY) || 2;
+const PDF_QUEUE_MAX = Number(process.env.PDF_QUEUE_MAX) || 12;
+
+let active = 0;
+const waiting = [];
+
+function acquireSlot() {
+    if (active < PDF_CONCURRENCY) {
+        active++;
+        return Promise.resolve();
+    }
+    if (waiting.length >= PDF_QUEUE_MAX) {
+        const err = new Error('PDF sirasi dolu');
+        err.code = 'PDF_BUSY';
+        return Promise.reject(err);
+    }
+    return new Promise(resolve => waiting.push(resolve));
+}
+
+function releaseSlot() {
+    const next = waiting.shift();
+    if (next) next();          // slot devrediliyor, active ayni kaliyor
+    else active--;
+}
+
 async function renderPdf(bodyHtml, origin) {
+    await acquireSlot();
+    try {
+        return await renderPdfUnthrottled(bodyHtml, origin);
+    } finally {
+        releaseSlot();
+    }
+}
+
+async function renderPdfUnthrottled(bodyHtml, origin) {
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
@@ -246,6 +290,9 @@ router.post('/preview', pdfLimiter, quota.enforce('pdf'), async (req, res) => {
         });
         res.send(pdf);
     } catch (err) {
+        if (err.code === 'PDF_BUSY') {
+            return res.status(503).json({ message: 'Sistem su anda yogun, PDF sirasi dolu. Lutfen birkac saniye sonra tekrar deneyin.' });
+        }
         console.error('PDF preview error:', err);
         res.status(500).json({ message: 'PDF oluşturulamadı: ' + err.message });
     }
@@ -257,6 +304,16 @@ router.post('/send', pdfLimiter, quota.enforce('email'), async (req, res) => {
         const { html, customerEmail, customerName, projectName, message, fileName, senderName } = req.body;
         if (!html) return res.status(400).json({ message: 'Teklif içeriği (html) gerekli' });
         if (!customerEmail) return res.status(400).json({ message: 'Müşteri e-posta adresi gerekli' });
+
+        // Dogrulanmamis hesaplar disariya e-posta gonderemez. Kotuye kullanimin
+        // gercek zarari burada: baskasinin adresiyle acilan bir hesap, bizim
+        // alan adimizdan istedigine mail atabilirdi ve itibar bize yazilirdi.
+        if (!req.user.email_verified) {
+            return res.status(403).json({
+                message: 'E-posta gonderebilmek icin once kendi adresinizi dogrulamaniz gerekiyor. Kayit sirasinda gonderdigimiz dogrulama baglantisina tiklayin.',
+                needsVerification: true
+            });
+        }
         if (!isMailConfigured()) {
             return res.status(503).json({ message: 'E-posta gönderimi yapılandırılmamış. .env içine SMTP_USER ve SMTP_PASS ekleyin.' });
         }
@@ -277,6 +334,9 @@ router.post('/send', pdfLimiter, quota.enforce('email'), async (req, res) => {
 
         res.json({ message: `Teklif PDF olarak ${customerEmail} adresine gönderildi.` });
     } catch (err) {
+        if (err.code === 'PDF_BUSY') {
+            return res.status(503).json({ message: 'Sistem su anda yogun. Lutfen birkac saniye sonra tekrar deneyin.' });
+        }
         console.error('PDF send error:', err);
         res.status(500).json({ message: 'Gönderilemedi: ' + err.message });
     }

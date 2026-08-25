@@ -109,6 +109,40 @@ db.exec(`
     );
 `);
 
+// E-posta dogrulama bayragi. Dogrulanmamis hesap girebilir ama musteriye
+// e-posta GONDEREMEZ; kotuye kullanimin gercek zarari orada.
+const userCols = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+if (!userCols.includes('email_verified')) {
+    db.exec("ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0");
+    // Google ile gelen hesaplarin e-postasini Google zaten dogruluyor.
+    db.exec("UPDATE users SET email_verified = 1 WHERE google_id IS NOT NULL");
+    console.log('users.email_verified eklendi');
+}
+if (!userCols.includes('kvkk_accepted_at')) {
+    db.exec("ALTER TABLE users ADD COLUMN kvkk_accepted_at INTEGER");
+    console.log('users.kvkk_accepted_at eklendi');
+}
+
+db.exec(`
+    -- Sifre sifirlama ve e-posta dogrulama jetonlari.
+    -- Jetonun KENDISI degil, SHA-256 ozeti saklanir: veritabani sizarsa eldeki
+    -- ozetlerle hesap ele gecirilemez (parola saklamakla ayni mantik).
+    CREATE TABLE IF NOT EXISTS auth_tokens (
+        token_hash TEXT PRIMARY KEY,
+        user_id    INTEGER NOT NULL,
+        kind       TEXT NOT NULL,          -- 'reset' | 'verify'
+        expires_at INTEGER NOT NULL,
+        used_at    INTEGER,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_auth_tokens_user ON auth_tokens (user_id, kind);
+`);
+
+// Suresi gecmis jetonlari acilista temizle; bu tablonun sinirsiz buyumesi icin
+// bir sebep yok ve eski jetonlar sadece risk tasir.
+db.prepare('DELETE FROM auth_tokens WHERE expires_at < ?').run(Date.now());
+
 // Tek kullanicili donemden kalan sync_store (id=1) hala duruyorsa, ilk kayit olan
 // kullanici onu devralir. Devralinca satir silinir; bu ayni zamanda "devralindi"
 // isaretidir, ayri bir bayrak tutmaya gerek kalmaz.

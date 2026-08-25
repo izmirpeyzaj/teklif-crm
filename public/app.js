@@ -202,13 +202,84 @@ function authError(msg) {
     if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
 }
 
-window.toggleAuthTab = function (tab) {
-    const isLogin = tab === 'login';
-    document.getElementById('loginForm').classList.toggle('hidden', !isLogin);
-    document.getElementById('registerForm').classList.toggle('hidden', isLogin);
-    document.getElementById('tabLoginBtn').classList.toggle('active', isLogin);
-    document.getElementById('tabRegisterBtn').classList.toggle('active', !isLogin);
+// Kimlik ekraninda dort form var: giris, kayit, sifremi-unuttum, yeni-sifre.
+// Hepsini tek yerden yonetmek, birinin acik unutulmasini engelliyor.
+function showAuthForm(which) {
+    const forms = { login: 'loginForm', register: 'registerForm', forgot: 'forgotForm', reset: 'resetForm' };
+    Object.entries(forms).forEach(([key, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', key !== which);
+    });
+
+    const onTab = which === 'login' || which === 'register';
+    document.getElementById('tabLoginBtn').classList.toggle('active', which === 'login');
+    document.getElementById('tabRegisterBtn').classList.toggle('active', which === 'register');
+    // Sifre sifirlama akisindayken sekmeler ve Google butonu anlamsiz.
+    const tabs = document.querySelector('.auth-tabs');
+    if (tabs) tabs.style.display = onTab ? '' : 'none';
+    const g = document.getElementById('googleAuthBlock');
+    if (g && !onTab) g.classList.add('hidden');
+
     authError('');
+}
+
+window.toggleAuthTab = function (tab) { showAuthForm(tab); };
+window.showForgotForm = function () { showAuthForm('forgot'); };
+
+window.handleForgot = async function (e) {
+    e.preventDefault();
+    authError('');
+    const btn = e.target.querySelector('button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Gonderiliyor...'; }
+    try {
+        const r = await fetch('/api/auth/forgot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: document.getElementById('forgotEmail').value })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Islem basarisiz.');
+        // Kasitli olarak "adres kayitliysa" diyoruz: hangi adreslerin kayitli
+        // oldugunu disari sizdirmamak icin sunucu da ayni yanit doner.
+        authError('');
+        const el = document.getElementById('authError');
+        if (el) {
+            el.style.display = 'block';
+            el.style.color = '#166534';
+            el.textContent = 'Adres kayitliysa sifre belirleme baglantisi gonderildi. E-postanizi kontrol edin.';
+        }
+    } catch (err) {
+        authError(err.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Baglantiyi gonder'; }
+    }
+    return false;
+};
+
+window.handleReset = async function (e) {
+    e.preventDefault();
+    authError('');
+    const p1 = document.getElementById('resetPassword').value;
+    const p2 = document.getElementById('resetPassword2').value;
+    if (p1 !== p2) { authError('Iki sifre ayni degil.'); return false; }
+
+    const btn = e.target.querySelector('button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Guncelleniyor...'; }
+    try {
+        const r = await fetch('/api/auth/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: window.__resetToken, password: p1 })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Sifre guncellenemedi.');
+        history.replaceState({}, '', location.pathname);
+        afterAuth(data.user);
+    } catch (err) {
+        authError(err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Sifremi guncelle'; }
+    }
+    return false;
 };
 
 async function showAuthScreen() {
@@ -237,13 +308,79 @@ async function showAuthScreen() {
         }
     } catch (e) { /* sektorsuz devam */ }
 
+    const params = new URLSearchParams(location.search);
+
     // Google donusunde hata varsa goster
-    const err = new URLSearchParams(location.search).get('auth_error');
+    const err = params.get('auth_error');
     if (err) {
         authError(err);
         history.replaceState({}, '', location.pathname);
     }
+
+    // E-postadaki sifre belirleme baglantisindan gelindiyse dogrudan o formu ac.
+    const resetToken = params.get('reset_token');
+    if (resetToken) {
+        window.__resetToken = resetToken;
+        showAuthForm('reset');
+    }
 }
+
+// Dogrulama baglantisi giris yapilmis da olmayabilir de tiklanabilir; her iki
+// durumda da calismasi icin ayri tutuluyor.
+async function consumeVerifyTokenFromUrl() {
+    const token = new URLSearchParams(location.search).get('verify_token');
+    if (!token) return null;
+    history.replaceState({}, '', location.pathname);
+    try {
+        const r = await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+        return r.ok;
+    } catch (e) {
+        return false;
+    }
+}
+
+window.resendVerification = async function (btn) {
+    const original = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Gonderiliyor...'; }
+    try {
+        const r = await fetch('/api/auth/resend-verification', { method: 'POST' });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Gonderilemedi.');
+        if (btn) btn.textContent = 'Gonderildi';
+    } catch (err) {
+        alert(err.message);
+        if (btn) { btn.disabled = false; btn.textContent = original; }
+    }
+};
+
+window.deleteAccount = async function () {
+    const typed = prompt(
+        'Bu islem geri alinamaz. Tum teklifleriniz, musterileriniz ve gorselleriniz silinecek.\n\n' +
+        'Onaylamak icin hesabinizin e-posta adresini yazin:'
+    );
+    if (!typed) return;
+
+    try {
+        const r = await fetch('/api/auth/account', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirmEmail: typed })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Hesap silinemedi.');
+        stopSyncLoop();
+        resetLocalData();
+        localStorage.removeItem(SESSION_USER_KEY);
+        alert('Hesabiniz silindi.');
+        location.replace('/');
+    } catch (err) {
+        alert(err.message);
+    }
+};
 
 // Giris/kayit sonrasi ortak yol: yerel veriyi temizle, sayfayi bastan yukle.
 // Yeniden yukleme bilincli bir tercih; boylece tum ekranlar ve state yeni
@@ -291,7 +428,8 @@ window.handleRegister = async function (e) {
                 email: document.getElementById('regEmail').value,
                 password: document.getElementById('regPassword').value,
                 companyName: document.getElementById('regCompany').value,
-                industryId: document.getElementById('regSector').value || null
+                industryId: document.getElementById('regSector').value || null,
+                kvkkAccepted: document.getElementById('regKvkk').checked
             })
         });
         const data = await r.json().catch(function () { return {}; });
@@ -320,6 +458,11 @@ async function renderUserHeader() {
     const header = document.getElementById('userHeader');
     if (!header || !currentUser) return;
     header.classList.remove('hidden');
+
+    // Dogrulanmamis hesap: giris yapabilir, teklif hazirlayabilir, ama musteriye
+    // e-posta gonderemez. Serit bunu hatirlatiyor.
+    const banner = document.getElementById('verifyBanner');
+    if (banner) banner.classList.toggle('hidden', !!currentUser.email_verified);
     const emailEl = document.getElementById('userEmail');
     if (emailEl) {
         emailEl.textContent = currentUser.company_name
@@ -3686,8 +3829,12 @@ function renderStatusChart(kpis) {
 }
 
 async function boot() {
+    // 0) E-postadaki dogrulama baglantisindan gelinmis olabilir.
+    const verified = await consumeVerifyTokenFromUrl();
+
     // 1) Kim giris yapmis?
     currentUser = await fetchMe();
+    if (verified && currentUser) currentUser.email_verified = 1;
     if (!currentUser) {
         await showAuthScreen();
         return;                       // giris yapilmadan uygulama hic kurulmuyor

@@ -33,6 +33,38 @@
                     <input type="password" id="loginPassword" class="form-control" required placeholder="••••••••">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%">Giriş Yap</button>
+                <p style="text-align:center; margin:14px 0 0;">
+                    <a href="#" onclick="showForgotForm(); return false;" style="color:#2e7d32; font-size:.86rem;">Şifremi unuttum</a>
+                </p>
+            </form>
+
+            <!-- Şifremi unuttum -->
+            <form id="forgotForm" class="auth-form hidden" onsubmit="handleForgot(event)">
+                <p style="color:#64748b; font-size:.88rem; margin-top:0;">
+                    Hesabınızın e-posta adresini girin, şifre belirleme bağlantısını gönderelim.
+                </p>
+                <div class="form-group">
+                    <label>E-posta</label>
+                    <input type="email" id="forgotEmail" class="form-control" required placeholder="ornek@mail.com">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Bağlantıyı gönder</button>
+                <p style="text-align:center; margin:14px 0 0;">
+                    <a href="#" onclick="toggleAuthTab('login'); return false;" style="color:#64748b; font-size:.86rem;">Girişe dön</a>
+                </p>
+            </form>
+
+            <!-- E-postadaki bağlantıdan gelince -->
+            <form id="resetForm" class="auth-form hidden" onsubmit="handleReset(event)">
+                <p style="color:#64748b; font-size:.88rem; margin-top:0;">Yeni şifrenizi belirleyin.</p>
+                <div class="form-group">
+                    <label>Yeni şifre</label>
+                    <input type="password" id="resetPassword" class="form-control" required minlength="8" placeholder="En az 8 karakter">
+                </div>
+                <div class="form-group">
+                    <label>Yeni şifre (tekrar)</label>
+                    <input type="password" id="resetPassword2" class="form-control" required minlength="8" placeholder="Tekrar yazın">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%">Şifremi güncelle</button>
             </form>
 
             <form id="registerForm" class="auth-form hidden" onsubmit="handleRegister(event)">
@@ -55,6 +87,10 @@
                     </select>
                     <small style="color:#888; font-size:.78rem;">Seçtiğiniz sektörün hazır hizmet listesi hesabınıza yüklenir. Sonradan değiştirebilirsiniz.</small>
                 </div>
+                <label style="display:flex; gap:9px; align-items:flex-start; font-size:.83rem; color:#475569; margin:6px 0 16px; cursor:pointer; font-weight:normal;">
+                    <input type="checkbox" id="regKvkk" required style="margin-top:3px; flex-shrink:0;">
+                    <span><a href="/kvkk.html" target="_blank" style="color:#2e7d32;">Aydınlatma metnini</a> okudum, kişisel verilerimin işlenmesini kabul ediyorum.</span>
+                </label>
                 <button type="submit" class="btn btn-primary" style="width:100%">Hesap Oluştur</button>
             </form>
 
@@ -159,6 +195,14 @@
 
 
 
+
+    <div id="verifyBanner" class="hidden" style="background:#fffbeb; border-bottom:1px solid #fde68a; color:#92400e; padding:10px 20px; font-size:.87rem; display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <span style="flex:1; min-width:240px;">
+            E-posta adresiniz henüz doğrulanmadı. Müşterilerinize teklif <strong>gönderebilmek</strong> için
+            kayıt sırasında ilettiğimiz bağlantıya tıklayın.
+        </span>
+        <button class="btn btn-secondary" style="padding:5px 12px; font-size:.82rem;" onclick="resendVerification(this)">Tekrar gönder</button>
+    </div>
 
     <div class="user-header hidden" id="userHeader">
         <span id="userQuota" style="opacity:.75; font-size:.8rem;"></span>
@@ -864,6 +908,22 @@
                                 style="display:none" onchange="importBackup(this)">
                             <p class="hint" style="margin-top:10px; margin-bottom:0; color:#dc2626;">⚠️ Geri yükleme
                                 mevcut tüm verinin üzerine yazar.</p>
+                        </div>
+
+                        <div class="management-container" style="margin-top:20px;">
+                            <h3>Hesap</h3>
+                            <p class="hint" style="margin-bottom:14px;">
+                                <a href="/kvkk.html" target="_blank" style="color:#2e7d32;">Aydınlatma metni ve gizlilik politikası</a>
+                            </p>
+                            <div style="border:1px solid #fecaca; background:#fef2f2; border-radius:8px; padding:14px;">
+                                <strong style="color:#b91c1c; font-size:.92rem;">Hesabı kalıcı olarak sil</strong>
+                                <p class="hint" style="margin:8px 0 12px;">
+                                    Tüm teklifleriniz, müşterileriniz, hizmetleriniz ve ürettiğiniz görseller
+                                    geri alınamaz biçimde silinir. Önce yedek almanız önerilir.
+                                </p>
+                                <button class="btn btn-secondary" style="width:100%; border-color:#dc2626; color:#dc2626;"
+                                    onclick="deleteAccount()">Hesabımı sil</button>
+                            </div>
                         </div>
                     </div>
                 </aside>

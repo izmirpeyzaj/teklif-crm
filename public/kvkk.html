@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aydınlatma Metni ve Gizlilik Politikası</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.7;
+         color: #1e293b; max-width: 780px; margin: 0 auto; padding: 40px 22px 80px; }
+  h1 { color: #1b5e20; font-size: 1.7rem; margin-bottom: 6px; }
+  h2 { color: #1b5e20; font-size: 1.12rem; margin-top: 34px; }
+  .tarih { color: #64748b; font-size: .86rem; margin-bottom: 30px; }
+  .uyari { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 14px 18px;
+           border-radius: 6px; font-size: .9rem; margin: 26px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: .9rem; }
+  th, td { border: 1px solid #e2e8f0; padding: 9px 11px; text-align: left; vertical-align: top; }
+  th { background: #f8fafc; }
+  code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: .88em; }
+  a { color: #2e7d32; }
+  .geri { display: inline-block; margin-bottom: 24px; text-decoration: none; font-size: .9rem; }
+</style>
+</head>
+<body>
+
+<a class="geri" href="/">&larr; Uygulamaya dön</a>
+
+<h1>Aydınlatma Metni ve Gizlilik Politikası</h1>
+<p class="tarih">Son güncelleme: 25 Ağustos 2026</p>
+
+<div class="uyari">
+  <strong>Önemli:</strong> Bu metin, sistemin gerçekte hangi veriyi nasıl işlediğini
+  dürüstçe anlatmak üzere hazırlanmış bir taslaktır. Yürürlüğe koymadan önce
+  <strong>bir avukata inceletin</strong> ve aşağıda köşeli parantez içinde bırakılan
+  veri sorumlusu bilgilerini doldurun. Bu metin hukuki danışmanlık değildir.
+</div>
+
+<h2>1. Veri sorumlusu</h2>
+<p>
+  6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) uyarınca veri sorumlusu:
+  <strong>[Ticari unvan]</strong>, <strong>[adres]</strong>,
+  <strong>[e-posta]</strong>, <strong>[telefon]</strong>.
+</p>
+
+<h2>2. Bu sistemde iki ayrı veri grubu var</h2>
+<p>
+  Bu ayrım önemli, çünkü iki grup için sorumluluklar farklı:
+</p>
+<table>
+  <tr><th>Grup</th><th>Kim</th><th>Bizim rolümüz</th></tr>
+  <tr>
+    <td><strong>Hesap sahipleri</strong></td>
+    <td>Sisteme kayıt olan işletmeler ve çalışanları</td>
+    <td>Veri sorumlusu</td>
+  </tr>
+  <tr>
+    <td><strong>Hesap sahiplerinin müşterileri</strong></td>
+    <td>Teklif hazırlanan kişi ve firmalar</td>
+    <td>Veri işleyen — bu veriyi hesap sahibi girer, biz yalnızca saklar ve
+        onun talimatıyla işleriz</td>
+  </tr>
+</table>
+
+<h2>3. İşlenen kişisel veriler</h2>
+<p><strong>Hesap sahibinden:</strong> e-posta adresi, şifrenin geri döndürülemez
+özeti (bcrypt), firma adı, sektör tercihi, Google ile giriş yapıldıysa Google
+hesap kimliği ve görünen ad, kayıt ve giriş zamanları, günlük kullanım sayaçları.</p>
+
+<p><strong>Hesap sahibinin girdiği müşteri verisi:</strong> müşteri adı, telefonu,
+e-posta adresi, adresi, teklif içerikleri, fiyatlar, notlar ve teklif geçmişi.
+Bu verinin doğruluğu, güncelliği ve toplanmasının hukuka uygunluğu
+<strong>hesap sahibinin sorumluluğundadır</strong>. Hesap sahibi, kendi müşterilerine
+karşı veri sorumlusudur ve gerekli aydınlatma ile rızaları almakla yükümlüdür.</p>
+
+<p><strong>Teknik veri:</strong> istek IP adresi (yalnızca kötüye kullanımı
+engelleyen hız sınırlayıcıda, geçici olarak bellekte tutulur, kalıcı olarak
+kaydedilmez), sunucu hata kayıtları.</p>
+
+<h2>4. İşleme amaçları ve hukuki sebepler</h2>
+<table>
+  <tr><th>Amaç</th><th>Hukuki sebep (KVKK m.5)</th></tr>
+  <tr><td>Hesap oluşturma, kimlik doğrulama, oturum yönetimi</td>
+      <td>Sözleşmenin kurulması ve ifası</td></tr>
+  <tr><td>Teklif ve müşteri kayıtlarının saklanması, cihazlar arası senkronizasyon</td>
+      <td>Sözleşmenin ifası</td></tr>
+  <tr><td>Teklif PDF'inin müşteriye e-posta ile iletilmesi</td>
+      <td>Sözleşmenin ifası (hesap sahibinin talimatı)</td></tr>
+  <tr><td>Kötüye kullanımın önlenmesi, hız sınırlama, kota</td>
+      <td>Meşru menfaat</td></tr>
+  <tr><td>E-posta adresinin doğrulanması</td>
+      <td>Meşru menfaat ve hizmet güvenliği</td></tr>
+</table>
+
+<h2>5. Yurt dışına aktarım</h2>
+<p>
+  Hizmetin çalışması için veri, aşağıdaki hizmet sağlayıcılara aktarılır.
+  Bu sağlayıcıların sunucuları Türkiye dışında bulunabilir:
+</p>
+<ul>
+  <li><strong>Hostinger</strong> — uygulamanın çalıştığı sunucu ve veritabanı.</li>
+  <li><strong>Resend</strong> — e-posta gönderimi. Yalnızca gönderim için gereken
+      alıcı adresi, konu ve içerik aktarılır.</li>
+  <li><strong>Google</strong> — yalnızca (a) Google ile giriş seçildiyse kimlik
+      doğrulama, (b) yapay zekâ ile görsel/metin üretimi kullanıldığında, üretim
+      için girilen hizmet adı gibi metinler. <strong>Müşteri listeniz veya teklif
+      verileriniz yapay zekâya gönderilmez.</strong></li>
+</ul>
+
+<h2>6. Saklama süresi</h2>
+<p>
+  Veriler hesap açık kaldığı sürece saklanır. Hesabınızı sildiğinizde hesap
+  bilgileriniz, tüm teklif ve müşteri kayıtlarınız ile ürettiğiniz görseller
+  <strong>kalıcı olarak ve geri alınamaz biçimde</strong> silinir. Silme işlemi
+  Ayarlar ekranından kendiniz yapabileceğiniz bir işlemdir.
+</p>
+<p>
+  Sunucu hata kayıtları en fazla 30 gün tutulur. Şifre sıfırlama ve doğrulama
+  bağlantıları sırasıyla 1 saat ve 7 gün sonra geçersiz olur.
+</p>
+
+<h2>7. Güvenlik önlemleri</h2>
+<ul>
+  <li>Tüm trafik HTTPS ile şifrelenir.</li>
+  <li>Şifreler bcrypt ile özetlenerek saklanır; düz metin şifre hiçbir yerde tutulmaz.</li>
+  <li>Oturum çerezi <code>HttpOnly</code> ve <code>SameSite=Lax</code>'tır; sayfadaki
+      betikler tarafından okunamaz.</li>
+  <li>Şifre sıfırlama ve doğrulama bağlantılarının yalnızca SHA-256 özeti saklanır.</li>
+  <li>Her hesabın verisi ayrı kayıtta tutulur; hesaplar birbirinin verisine erişemez.</li>
+  <li>Giriş ve şifre sıfırlama uçlarında hız sınırı uygulanır.</li>
+  <li>Yüklenen ve üretilen görseller yalnızca giriş yapmış hesaplara sunulur.</li>
+</ul>
+
+<h2>8. Haklarınız (KVKK m.11)</h2>
+<p>
+  Kişisel verilerinizin işlenip işlenmediğini öğrenme, işlenmişse bilgi talep etme,
+  amacına uygun kullanılıp kullanılmadığını öğrenme, yurt içinde veya dışında
+  aktarıldığı üçüncü kişileri bilme, eksik veya yanlış işlenmişse düzeltilmesini
+  isteme, silinmesini veya yok edilmesini isteme, işlenen verilerin münhasıran
+  otomatik sistemlerle analiz edilmesi suretiyle aleyhinize bir sonuç doğmasına
+  itiraz etme ve zarara uğramanız hâlinde zararın giderilmesini talep etme
+  haklarına sahipsiniz.
+</p>
+<p>
+  <strong>Verilerinizi dışa aktarma:</strong> Ayarlar ekranındaki yedekleme
+  seçeneği ile tüm verinizi istediğiniz an JSON olarak indirebilirsiniz.
+</p>
+<p>
+  Taleplerinizi <strong>[e-posta]</strong> adresine iletebilirsiniz; başvurular
+  en geç 30 gün içinde sonuçlandırılır.
+</p>
+
+<h2>9. Çerezler</h2>
+<p>
+  Yalnızca zorunlu çerez kullanılır: oturumunuzu açık tutan <code>session</code>
+  çerezi. Reklam, izleme veya analiz çerezi kullanılmaz, üçüncü taraf izleyici
+  bulunmaz.
+</p>
+
+<h2>10. Değişiklikler</h2>
+<p>
+  Bu metin güncellendiğinde bu sayfadaki tarih değişir; önemli değişikliklerde
+  hesabınızdaki e-posta adresine bilgilendirme yapılır.
+</p>
+
+</body>
+</html>

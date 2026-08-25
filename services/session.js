@@ -48,7 +48,7 @@ function currentUser(req) {
     try {
         const { userId } = jwt.verify(token, JWT_SECRET);
         return db.prepare(
-            'SELECT id, email, display_name, company_name, industry_id FROM users WHERE id = ?'
+            'SELECT id, email, display_name, company_name, industry_id, email_verified FROM users WHERE id = ?'
         ).get(userId) || null;
     } catch (e) {
         return null;

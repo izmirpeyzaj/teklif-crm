@@ -6,6 +6,25 @@ const path = require('path');
 const crypto = require('crypto');
 const db = require('../db_scripts/init');
 const session = require('../services/session');
+const tokens = require('../services/tokens');
+const { rateLimiter } = require('../services/rate-limit');
+const mail = require('../services/mail');
+
+// Kimlik uclari icin hiz sinirlari.
+// Giris ucu sifre deneme saldirisinin birincil hedefi; kayit ve sifirlama ise
+// hem spam hem de bizim e-posta kotamizi tuketme yolu.
+const loginLimiter = rateLimiter({
+    windowMs: 15 * 60 * 1000, max: 10,
+    message: 'Cok fazla giris denemesi yapildi. Lutfen 15 dakika sonra tekrar deneyin.'
+});
+const registerLimiter = rateLimiter({
+    windowMs: 60 * 60 * 1000, max: 5,
+    message: 'Bu baglantidan cok fazla hesap olusturuldu. Lutfen bir saat sonra tekrar deneyin.'
+});
+const mailLimiter = rateLimiter({
+    windowMs: 60 * 60 * 1000, max: 5,
+    message: 'Cok fazla e-posta talebi. Lutfen bir saat sonra tekrar deneyin.'
+});
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
@@ -106,6 +125,22 @@ function createInitialSync(userId, opts) {
     return serviceCount;
 }
 
+// Dogrulama baglantisini gonderir. Gonderim basarisiz olursa kayit AKMAZ:
+// kullanici zaten girebiliyor, yalnizca dogrulanmamis kaliyor ve tekrar
+// isteyebiliyor. Kaydi mail hatasi yuzunden bozmak daha kotu olurdu.
+async function sendVerification(user, req) {
+    try {
+        if (!mail.isMailConfigured()) return;
+        const token = tokens.issue(user.id, 'verify');
+        await mail.sendVerificationEmail({
+            to: user.email,
+            link: publicOrigin(req) + '/?verify_token=' + token
+        });
+    } catch (err) {
+        console.error('Dogrulama e-postasi gonderilemedi:', err.message);
+    }
+}
+
 // Tek kullanicili donemden kalan veriyi ilk kayit olan devralir; devralmadiysa
 // sektor paketiyle temiz bir baslangic olusturulur.
 function initialiseAccount(userId, opts) {
@@ -135,13 +170,120 @@ router.get('/me', (req, res) => {
     res.json({ user });
 });
 
+// Dogrulama e-postasini yeniden gonder.
+router.post('/resend-verification', mailLimiter, async (req, res) => {
+    const user = session.currentUser(req);
+    if (!user) return res.status(401).json({ message: 'Giris gerekli.' });
+    if (user.email_verified) return res.json({ ok: true, alreadyVerified: true });
+    await sendVerification(user, req);
+    res.json({ ok: true });
+});
+
+// E-posta dogrulama baglantisinin ucu.
+router.post('/verify', (req, res) => {
+    const userId = tokens.consume((req.body || {}).token, 'verify');
+    if (!userId) {
+        return res.status(400).json({ message: 'Dogrulama baglantisi gecersiz veya suresi dolmus.' });
+    }
+    db.prepare('UPDATE users SET email_verified = 1 WHERE id = ?').run(userId);
+    res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Sifre sifirlama
+// ---------------------------------------------------------------------------
+
+// Yanit HER ZAMAN ayni: adresin kayitli olup olmadigini sizdirmamak icin.
+router.post('/forgot', mailLimiter, async (req, res) => {
+    const email = String((req.body || {}).email || '').toLowerCase().trim();
+    const generic = { ok: true, message: 'Adres kayitliysa sifirlama baglantisi gonderildi.' };
+
+    if (!email) return res.json(generic);
+
+    try {
+        const user = db.prepare('SELECT id, email, password FROM users WHERE email = ?').get(email);
+        if (user && mail.isMailConfigured()) {
+            if (!user.password) {
+                // Google hesabi: sifresi yok, sifirlanacak bir sey de yok.
+                console.log('Sifre sifirlama Google hesabi icin istendi, atlandi:', email);
+            } else {
+                const token = tokens.issue(user.id, 'reset');
+                await mail.sendPasswordResetEmail({
+                    to: user.email,
+                    link: publicOrigin(req) + '/?reset_token=' + token
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Sifre sifirlama hatasi:', err.message);
+    }
+
+    res.json(generic);
+});
+
+router.post('/reset', async (req, res) => {
+    const { token, password } = req.body || {};
+    if (!password || String(password).length < 8) {
+        return res.status(400).json({ message: 'Sifre en az 8 karakter olmali.' });
+    }
+
+    const userId = tokens.consume(token, 'reset');
+    if (!userId) {
+        return res.status(400).json({ message: 'Sifirlama baglantisi gecersiz veya suresi dolmus.' });
+    }
+
+    const hashed = await bcrypt.hash(password, 10);
+    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, userId);
+
+    // Sifre degistiginde oturum acmak dogru davranis: kullanici zaten
+    // e-posta kutusuna erisimini kanitladi.
+    session.issue(res, userId, req);
+    const user = db.prepare('SELECT id, email, company_name FROM users WHERE id = ?').get(userId);
+    res.json({ ok: true, user });
+});
+
+// ---------------------------------------------------------------------------
+// Hesap silme (KVKK: silme hakki)
+// ---------------------------------------------------------------------------
+router.delete('/account', (req, res) => {
+    const user = session.currentUser(req);
+    if (!user) return res.status(401).json({ message: 'Giris gerekli.' });
+
+    // Onay olarak kendi e-postasini yazmasini istiyoruz; yanlislikla silinmesi
+    // geri donusu olmayan bir islem.
+    const typed = String((req.body || {}).confirmEmail || '').toLowerCase().trim();
+    if (typed !== String(user.email).toLowerCase()) {
+        return res.status(400).json({ message: 'Onay icin e-posta adresinizi dogru yazin.' });
+    }
+
+    try {
+        db.transaction(() => {
+            db.prepare('DELETE FROM user_sync WHERE user_id = ?').run(user.id);
+            db.prepare('DELETE FROM usage_counters WHERE user_id = ?').run(user.id);
+            db.prepare('DELETE FROM auth_tokens WHERE user_id = ?').run(user.id);
+            db.prepare('DELETE FROM users WHERE id = ?').run(user.id);
+        })();
+
+        // Uretilen gorseller de gitmeli; aksi halde silinen hesabin dosyalari
+        // diskte kalirdi ve bu KVKK acisindan "silinmis" sayilmaz.
+        const dir = path.join(__dirname, '..', 'public', 'uploads', 'ai', String(user.id));
+        if (fs.existsSync(dir)) fs.rmSync(dir, { recursive: true, force: true });
+
+        session.clear(res);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('Hesap silme hatasi:', err);
+        res.status(500).json({ message: 'Hesap silinemedi.' });
+    }
+});
+
 router.post('/logout', (req, res) => {
     session.clear(res);
     res.json({ ok: true });
 });
 
-router.post('/register', async (req, res) => {
-    const { email, password, companyName, industryId } = req.body || {};
+router.post('/register', registerLimiter, async (req, res) => {
+    const { email, password, companyName, industryId, kvkkAccepted } = req.body || {};
 
     if (!email || !password) {
         return res.status(400).json({ message: 'E-posta ve sifre gerekli.' });
@@ -152,18 +294,26 @@ router.post('/register', async (req, res) => {
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) {
         return res.status(400).json({ message: 'Gecerli bir e-posta adresi girin.' });
     }
+    // KVKK acik rizasi olmadan kayit alinmiyor: kullanici kendi musterilerinin
+    // kisisel verisini bu sisteme girecek, bu onay yasal olarak zorunlu.
+    if (!kvkkAccepted) {
+        return res.status(400).json({ message: 'Devam etmek icin aydinlatma metnini onaylamaniz gerekiyor.' });
+    }
 
     try {
         const hashed = await bcrypt.hash(password, 10);
         const info = db.prepare(
-            'INSERT INTO users (email, password, company_name, industry_id) VALUES (?, ?, ?, ?)'
-        ).run(String(email).toLowerCase().trim(), hashed, companyName || null, industryId || null);
+            'INSERT INTO users (email, password, company_name, industry_id, kvkk_accepted_at) VALUES (?, ?, ?, ?, ?)'
+        ).run(String(email).toLowerCase().trim(), hashed, companyName || null, industryId || null, Date.now());
 
         const userId = info.lastInsertRowid;
         initialiseAccount(userId, { companyName, email, industryId });
 
         session.issue(res, userId, req);
-        res.status(201).json({ user: { id: userId, email, company_name: companyName } });
+        res.status(201).json({ user: { id: userId, email, company_name: companyName, email_verified: 0 } });
+
+        // Yanit gonderildikten sonra: mail servisi yavassa kayit beklemesin.
+        sendVerification({ id: userId, email: String(email).toLowerCase().trim() }, req);
     } catch (error) {
         if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
             return res.status(400).json({ message: 'Bu e-posta zaten kayitli.' });
@@ -173,7 +323,7 @@ router.post('/register', async (req, res) => {
     }
 });
 
-router.post('/login', async (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
     const { email, password } = req.body || {};
     if (!email || !password) {
         return res.status(400).json({ message: 'E-posta ve sifre gerekli.' });
@@ -205,7 +355,7 @@ router.post('/login', async (req, res) => {
     }
 
     session.issue(res, user.id, req);
-    res.json({ user: { id: user.id, email: user.email, company_name: user.company_name } });
+    res.json({ user: { id: user.id, email: user.email, company_name: user.company_name, email_verified: user.email_verified } });
 });
 
 // ---------------------------------------------------------------------------
