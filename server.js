@@ -175,6 +175,21 @@ try {
     } catch(e) {}
 }
 
+// SPA yonlendirmesi: bilinmeyen YOL'lar icin index.html don.
+//
+// Ama dosya gibi gorunen (uzantili) istekler icin DONME. Aksi halde eksik bir
+// gorsel 404 yerine 70KB'lik index.html ile 200 donuyordu: tarayici HTML'i
+// gorsel olarak cozemeyip onerror'a dusuyor, yani yer tutucu yine calisiyordu
+// ama her eksik gorsel icin bosuna 70KB indiriliyordu. Sektor paketlerinde
+// henuz uretilmemis 98 gorsel var; tek teklifte 10 tanesi cikabiliyor.
+//
+// Ayrica: yanlis yazilmis her varlik adresi sessizce 200 donuyordu, bu da
+// hatayi gizliyordu.
+const VARLIK_UZANTISI = /\.[a-z0-9]{2,5}$/i;
+
 app.use((req, res) => {
+    if (VARLIK_UZANTISI.test(req.path)) {
+        return res.status(404).type('text/plain').send('Bulunamadi');
+    }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
