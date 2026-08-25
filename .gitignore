@@ -12,3 +12,16 @@ dist/
 temp_deploy/
 server.js.bak
 *.exe
+
+# Kullanicilarin urettigi gorseller. Burasi artik KIRACI VERISI: her hesabin
+# AI gorselleri kendi klasorunde (public/uploads/ai/<kullaniciId>/). Depo genel
+# oldugu icin, bir "git add -A" ile buraya bir musteri gorselinin girmesi
+# dogrudan veri sizintisi olurdu. .gitkeep haric her sey disarida.
+public/uploads/ai/*/
+
+# NOT: dogrudan public/uploads/ai/ altindaki uc eski gorsel bilerek takipte
+# birakildi. Onlar tek kullanicili donemden kalma ve uretimdeki veri onlara
+# atifta bulunuyor olabilir; depodan cikarmak derlemeye girmemelerine, yani
+# kullanicinin kendi tekliflerinde kirik gorsele yol acardi. Kiraci verisi
+# olan yeni yuklemeler zaten <kullaniciId>/ alt klasorune dusuyor ve yukaridaki
+# kural onlari disarida tutuyor.
