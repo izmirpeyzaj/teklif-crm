@@ -22,6 +22,19 @@ const DEFAULT_TERMS = `GENEL HÜKÜMLER VE GARANTİ KOŞULLARI
 const SYNC_TS_KEY = 'teklif_sync_updatedAt';
 let _lastSyncedCanon = null;
 
+// localStorage'daki tum `teklif_*` anahtarlarini siler.
+//
+// Anahtarlar ONCE toplanip SONRA siliniyor. Silerken ayni anda index uzerinden
+// donmek (`for i = length-1 ... localStorage.key(i)`) bazi anahtarlari atliyordu:
+// her silme kalan anahtarlarin indekslerini kaydiriyor. Bu yuzden cikista
+// `teklif_company` gibi kayitlar geride kaliyor, hesap degistiginde de onceki
+// kullanicinin verisi yenisinin ustunde duruyordu.
+function clearTeklifKeys() {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
+    keys.forEach(k => { if (k && k.indexOf('teklif_') === 0) localStorage.removeItem(k); });
+}
+
 function collectSyncData() {
     const data = {};
     for (let i = 0; i < localStorage.length; i++) {
@@ -54,14 +67,49 @@ function setSyncStatus(s) {
 }
 
 // Değişiklikleri periyodik olarak yakalayıp buluta gönder (localStorage'a dokunmadan)
+let _syncTimer = null;
+let _syncStopped = false;
+
+// Bulut kaydinin uzerine yazmaya YALNIZCA sunucudan basariyla veri cektikten
+// sonra izin verilir.
+//
+// Neden: bu mimaride her gonderim, sunucudaki blogun tamamini degistirir. Yerel
+// depo herhangi bir sebeple eksik doldugunda (sayfa yarim yuklendi, kullanici
+// degisti, cikis sirasinda temizlendi) o eksik hali gondermek, kullanicinin tum
+// musteri ve tekliflerini siler. Testte tam olarak bu oldu: 2 anahtarlik yarim
+// bir durum, sunucudaki 9 anahtarlik kaydin uzerine yazdi.
+//
+// Cekme basarisiz olursa (cevrimdisi) bayrak false kalir: o oturumda veri
+// gonderilmez. Cevrimdisi duzenlemenin buluta gitmemesi, buluttaki dogru verinin
+// yanlisla ezilmesinden iyidir.
+let _syncReady = false;
+
 function startSyncLoop() {
-    setInterval(pushSync, 3000);
+    _syncStopped = false;
+    _syncTimer = setInterval(pushSync, 3000);
     document.addEventListener('visibilitychange', () => { if (document.hidden) pushSync(); });
     window.addEventListener('pagehide', () => { pushSync(); });
 }
 
+// Cikista kritik: yerel veri silindikten SONRA donguden bir tik daha gecerse
+// buluta bos anlik goruntu yazilir ve hesabin tum verisi silinir.
+function stopSyncLoop() {
+    _syncStopped = true;
+    _syncReady = false;
+    if (_syncTimer) { clearInterval(_syncTimer); _syncTimer = null; }
+}
+
 async function pushSync() {
+    if (_syncStopped) return;
+    if (!_syncReady) return;   // sunucu durumu bilinmeden yazma (bkz. _syncReady)
+
     const data = collectSyncData();
+
+    // Bos anlik goruntu ASLA gonderilmez.
+    // Bos `teklif_*` kumesi "kullanicinin hicbir verisi yok" degil, "veri henuz
+    // yuklenmedi / az once temizlendi" demektir.
+    if (Object.keys(data).length === 0) return;
+
     const canon = canonicalSync(data);
     if (canon === _lastSyncedCanon) return; // değişmemiş
     setSyncStatus('saving');
@@ -90,10 +138,15 @@ async function pullSyncOnLoad() {
             return applyServerData(srv.data, serverTs); // sunucu daha yeni -> uygula + reload
         }
         if (!srv.data && localHasData) {
-            await pushSync(); // sunucu boş, yereli buluta tohumla
+            // Sunucu bos, yerel dolu -> yereli buluta tohumla.
+            _syncReady = true;
+            await pushSync();
             return false;
         }
         if (srv.data) { try { _lastSyncedCanon = canonicalSync(JSON.parse(srv.data)); } catch (e) { } }
+
+        // Buraya gelindiyse sunucunun durumu biliniyor ve yerel ondan geri degil.
+        _syncReady = true;
         setSyncStatus('saved');
     } catch (e) { setSyncStatus('error'); }
     return false;
@@ -103,14 +156,328 @@ function applyServerData(dataStr, serverTs) {
     let obj;
     try { obj = typeof dataStr === 'string' ? JSON.parse(dataStr) : dataStr; }
     catch (e) { return false; }
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-        const k = localStorage.key(i);
-        if (k && k.indexOf('teklif_') === 0 && k !== SYNC_TS_KEY) localStorage.removeItem(k);
-    }
+    // Yeniden yukleme oncesi yazmayi kapat: aradaki tikda yarim durum gitmesin.
+    stopSyncLoop();
+    clearTeklifKeys();
     Object.keys(obj).forEach(k => { if (k.indexOf('teklif_') === 0) localStorage.setItem(k, obj[k]); });
     localStorage.setItem(SYNC_TS_KEY, String(serverTs));
     location.reload();
     return true;
+}
+
+
+// ====================================
+// OTURUM / UYELIK
+// ====================================
+// Hangi kullanicinin verisinin tarayicida durdugunu isaretler. Bilerek `teklif_`
+// ile BASLAMIYOR: o onekli her sey buluta senkronlaniyor, bu isaret ise
+// tarayiciya ozel ve senkronlanmamali.
+const SESSION_USER_KEY = 'crm_session_user';
+
+let currentUser = null;
+
+// Tarayicidaki tum is verisini siler.
+// Ayni bilgisayarda A cikip B girdiginde bu CALISMAZSA, B'nin bos hesabi
+// A'nin verisini buluta "kendi verisi" diye geri yazar. Hesaplar arasi veri
+// sizintisinin tek gercek korumasi burasi.
+function resetLocalData() {
+    stopSyncLoop();   // once dur, sonra sil (bkz. stopSyncLoop notu)
+    clearTeklifKeys();
+    localStorage.removeItem(SYNC_TS_KEY);
+    _lastSyncedCanon = null;
+}
+
+async function fetchMe() {
+    try {
+        const r = await fetch('/api/auth/me');
+        if (!r.ok) return null;
+        return (await r.json()).user;
+    } catch (e) {
+        return null;
+    }
+}
+
+function authError(msg) {
+    const el = document.getElementById('authError');
+    if (el) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; }
+}
+
+// Kimlik ekraninda dort form var: giris, kayit, sifremi-unuttum, yeni-sifre.
+// Hepsini tek yerden yonetmek, birinin acik unutulmasini engelliyor.
+function showAuthForm(which) {
+    const forms = { login: 'loginForm', register: 'registerForm', forgot: 'forgotForm', reset: 'resetForm' };
+    Object.entries(forms).forEach(([key, id]) => {
+        const el = document.getElementById(id);
+        if (el) el.classList.toggle('hidden', key !== which);
+    });
+
+    const onTab = which === 'login' || which === 'register';
+    document.getElementById('tabLoginBtn').classList.toggle('active', which === 'login');
+    document.getElementById('tabRegisterBtn').classList.toggle('active', which === 'register');
+    // Sifre sifirlama akisindayken sekmeler ve Google butonu anlamsiz.
+    const tabs = document.querySelector('.auth-tabs');
+    if (tabs) tabs.style.display = onTab ? '' : 'none';
+    const g = document.getElementById('googleAuthBlock');
+    if (g && !onTab) g.classList.add('hidden');
+
+    authError('');
+}
+
+window.toggleAuthTab = function (tab) { showAuthForm(tab); };
+window.showForgotForm = function () { showAuthForm('forgot'); };
+
+window.handleForgot = async function (e) {
+    e.preventDefault();
+    authError('');
+    const btn = e.target.querySelector('button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Gonderiliyor...'; }
+    try {
+        const r = await fetch('/api/auth/forgot', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: document.getElementById('forgotEmail').value })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Islem basarisiz.');
+        // Kasitli olarak "adres kayitliysa" diyoruz: hangi adreslerin kayitli
+        // oldugunu disari sizdirmamak icin sunucu da ayni yanit doner.
+        authError('');
+        const el = document.getElementById('authError');
+        if (el) {
+            el.style.display = 'block';
+            el.style.color = '#166534';
+            el.textContent = 'Adres kayitliysa sifre belirleme baglantisi gonderildi. E-postanizi kontrol edin.';
+        }
+    } catch (err) {
+        authError(err.message);
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Baglantiyi gonder'; }
+    }
+    return false;
+};
+
+window.handleReset = async function (e) {
+    e.preventDefault();
+    authError('');
+    const p1 = document.getElementById('resetPassword').value;
+    const p2 = document.getElementById('resetPassword2').value;
+    if (p1 !== p2) { authError('Iki sifre ayni degil.'); return false; }
+
+    const btn = e.target.querySelector('button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Guncelleniyor...'; }
+    try {
+        const r = await fetch('/api/auth/reset', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: window.__resetToken, password: p1 })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Sifre guncellenemedi.');
+        history.replaceState({}, '', location.pathname);
+        afterAuth(data.user);
+    } catch (err) {
+        authError(err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Sifremi guncelle'; }
+    }
+    return false;
+};
+
+async function showAuthScreen() {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.classList.remove('hidden');
+    const shell = document.querySelector('.app-shell');
+    if (shell) shell.style.display = 'none';
+
+    // Google yapilandirildiysa butonu goster
+    try {
+        const cfg = await (await fetch('/api/auth/config')).json();
+        if (cfg.google) document.getElementById('googleAuthBlock').classList.remove('hidden');
+    } catch (e) { /* butonsuz devam */ }
+
+    // Sektor listesini doldur
+    try {
+        const res = await (await fetch('/api/auth/sectors')).json();
+        const sel = document.getElementById('regSector');
+        if (sel && res.sectors) {
+            res.sectors.forEach(function (x) {
+                const o = document.createElement('option');
+                o.value = x.id;
+                o.textContent = ((x.icon || '') + ' ' + x.name + ' (' + x.serviceCount + ' hizmet)').trim();
+                sel.appendChild(o);
+            });
+        }
+    } catch (e) { /* sektorsuz devam */ }
+
+    const params = new URLSearchParams(location.search);
+
+    // Google donusunde hata varsa goster
+    const err = params.get('auth_error');
+    if (err) {
+        authError(err);
+        history.replaceState({}, '', location.pathname);
+    }
+
+    // E-postadaki sifre belirleme baglantisindan gelindiyse dogrudan o formu ac.
+    const resetToken = params.get('reset_token');
+    if (resetToken) {
+        window.__resetToken = resetToken;
+        showAuthForm('reset');
+    }
+}
+
+// Dogrulama baglantisi giris yapilmis da olmayabilir de tiklanabilir; her iki
+// durumda da calismasi icin ayri tutuluyor.
+async function consumeVerifyTokenFromUrl() {
+    const token = new URLSearchParams(location.search).get('verify_token');
+    if (!token) return null;
+    history.replaceState({}, '', location.pathname);
+    try {
+        const r = await fetch('/api/auth/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token })
+        });
+        return r.ok;
+    } catch (e) {
+        return false;
+    }
+}
+
+window.resendVerification = async function (btn) {
+    const original = btn ? btn.textContent : null;
+    if (btn) { btn.disabled = true; btn.textContent = 'Gonderiliyor...'; }
+    try {
+        const r = await fetch('/api/auth/resend-verification', { method: 'POST' });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Gonderilemedi.');
+        if (btn) btn.textContent = 'Gonderildi';
+    } catch (err) {
+        alert(err.message);
+        if (btn) { btn.disabled = false; btn.textContent = original; }
+    }
+};
+
+window.deleteAccount = async function () {
+    const typed = prompt(
+        'Bu islem geri alinamaz. Tum teklifleriniz, musterileriniz ve gorselleriniz silinecek.\n\n' +
+        'Onaylamak icin hesabinizin e-posta adresini yazin:'
+    );
+    if (!typed) return;
+
+    try {
+        const r = await fetch('/api/auth/account', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirmEmail: typed })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Hesap silinemedi.');
+        stopSyncLoop();
+        resetLocalData();
+        localStorage.removeItem(SESSION_USER_KEY);
+        alert('Hesabiniz silindi.');
+        location.replace('/');
+    } catch (err) {
+        alert(err.message);
+    }
+};
+
+// Giris/kayit sonrasi ortak yol: yerel veriyi temizle, sayfayi bastan yukle.
+// Yeniden yukleme bilincli bir tercih; boylece tum ekranlar ve state yeni
+// hesabin verisiyle sifirdan kuruluyor, yarim kalmis eski state kalmiyor.
+function afterAuth(user) {
+    resetLocalData();
+    localStorage.setItem(SESSION_USER_KEY, String(user.id));
+    location.replace('/');
+}
+
+window.handleLogin = async function (e) {
+    e.preventDefault();
+    authError('');
+    const btn = e.target.querySelector('button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Giris yapiliyor...'; }
+    try {
+        const r = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: document.getElementById('loginEmail').value,
+                password: document.getElementById('loginPassword').value
+            })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Giris basarisiz.');
+        afterAuth(data.user);
+    } catch (err) {
+        authError(err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Giris Yap'; }
+    }
+    return false;
+};
+
+window.handleRegister = async function (e) {
+    e.preventDefault();
+    authError('');
+    const btn = e.target.querySelector('button[type=submit]');
+    if (btn) { btn.disabled = true; btn.textContent = 'Hesap olusturuluyor...'; }
+    try {
+        const r = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email: document.getElementById('regEmail').value,
+                password: document.getElementById('regPassword').value,
+                companyName: document.getElementById('regCompany').value,
+                industryId: document.getElementById('regSector').value || null,
+                kvkkAccepted: document.getElementById('regKvkk').checked
+            })
+        });
+        const data = await r.json().catch(function () { return {}; });
+        if (!r.ok) throw new Error(data.message || 'Kayit basarisiz.');
+        afterAuth(data.user);
+    } catch (err) {
+        authError(err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'Hesap Olustur'; }
+    }
+    return false;
+};
+
+window.logout = async function () {
+    if (!confirm('Cikis yapilsin mi? Verileriniz buluta kaydedilmis olacak.')) return;
+    // Son bir kez gonder, sonra dongunun agzini kapat.
+    try { await pushSync(); } catch (e) { /* cevrimdisi olsa da cikisa izin ver */ }
+    stopSyncLoop();
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+    resetLocalData();
+    localStorage.removeItem(SESSION_USER_KEY);
+    location.replace('/');
+};
+
+// Ust bardaki e-posta ve kalan kota
+async function renderUserHeader() {
+    const header = document.getElementById('userHeader');
+    if (!header || !currentUser) return;
+    header.classList.remove('hidden');
+
+    // Dogrulanmamis hesap: giris yapabilir, teklif hazirlayabilir, ama musteriye
+    // e-posta gonderemez. Serit bunu hatirlatiyor.
+    const banner = document.getElementById('verifyBanner');
+    if (banner) banner.classList.toggle('hidden', !!currentUser.email_verified);
+    const emailEl = document.getElementById('userEmail');
+    if (emailEl) {
+        emailEl.textContent = currentUser.company_name
+            ? currentUser.company_name + ' - ' + currentUser.email
+            : currentUser.email;
+    }
+
+    try {
+        const res = await (await fetch('/api/usage')).json();
+        const el = document.getElementById('userQuota');
+        if (el && res.usage) {
+            el.textContent = 'Bugun: ' + res.usage.ai_image.used + '/' + res.usage.ai_image.limit
+                + ' gorsel, ' + res.usage.email.used + '/' + res.usage.email.limit + ' mail';
+        }
+    } catch (e) { /* kota gosterilemezse sorun degil */ }
 }
 
 const state = {
@@ -119,16 +486,19 @@ const state = {
     cart: [],
     productCart: [], // Ürün sepeti
     company: {
-        name: APP_DATA.company.name,
-        address: APP_DATA.company.address,
-        phone: APP_DATA.company.phone,
-        email: APP_DATA.company.email,
+        // Cok kullanicili moda gecince APP_DATA varsayilan OLAMAZ: o veri
+        // bizim kendi firmamiza ait. Yeni hesabin baslangic verisini sunucu
+        // uretiyor (routes/auth.js -> seedSnapshot) ve senkronla geliyor.
+        name: '',
+        address: '',
+        phone: '',
+        email: '',
         logo: null,
         notes: ''
     },
-    jobs: localStorage.getItem('teklif_services') ? JSON.parse(localStorage.getItem('teklif_services')) : (typeof APP_DATA !== 'undefined' ? APP_DATA.jobs : []),
-    products: localStorage.getItem('teklif_products') ? JSON.parse(localStorage.getItem('teklif_products')) : (typeof APP_DATA !== 'undefined' ? APP_DATA.products : []),
-    references: localStorage.getItem('teklif_references') ? JSON.parse(localStorage.getItem('teklif_references')) : (typeof APP_DATA !== 'undefined' ? APP_DATA.references : []),
+    jobs: localStorage.getItem('teklif_services') ? JSON.parse(localStorage.getItem('teklif_services')) : [],
+    products: localStorage.getItem('teklif_products') ? JSON.parse(localStorage.getItem('teklif_products')) : [],
+    references: localStorage.getItem('teklif_references') ? JSON.parse(localStorage.getItem('teklif_references')) : [],
     usage: {}, // Track service usage: { jobId: count }
     productUsage: {}, // Track product usage
     priceHistory: {}, // Önceki fiyat hafızası: { serviceId: { last:{price,date,customer}, byCustomer:{ key:{price,date,customer} } } }
@@ -246,48 +616,26 @@ const STORAGE_KEYS = {
 };
 
 function loadData() {
+    // DIKKAT: Buradaki eski "eksikse APP_DATA'dan zorla guncelle" mantigi
+    // kaldirildi. Tek isletmelik donemde mantikliydi; cok kullanicili modda
+    // felaketti: 39'dan az hizmeti olan HER kullaniciya bizim peyzaj hizmet
+    // listemizi, referans fotograflarimizi ve firma bilgilerimizi yaziyordu.
+    // Elektrikci olarak kayit olan biri, kendi 14 hizmetinin ustune bizim 39
+    // peyzaj hizmetimizi almis oluyordu. Artik ne varsa o kullanilir; hesabin
+    // baslangic verisini sunucu uretir.
     const savedCompany = localStorage.getItem(STORAGE_KEYS.COMPANY);
-    state.company = savedCompany ? JSON.parse(savedCompany) : { ...APP_DATA.company };
+    state.company = savedCompany
+        ? JSON.parse(savedCompany)
+        : { name: '', address: '', phone: '', email: '', logo: null };
 
-    // Migration: Update if still using old default address or no logo
-    if (state.company.address === 'Erzene mah. Bornova/İzmir' || !state.company.logo) {
-        state.company = { ...APP_DATA.company };
-        persistCompany();
-    }
-
-    // Services
     const savedServices = localStorage.getItem(STORAGE_KEYS.SERVICES);
-    const parsedServices = savedServices ? JSON.parse(savedServices) : [];
+    state.jobs = savedServices ? JSON.parse(savedServices) : [];
 
-    // Force update if saved services are significantly fewer than APP_DATA (migration)
-    if (parsedServices.length < APP_DATA.jobs.length) {
-        state.jobs = [...APP_DATA.jobs];
-        persistServices(); // Update localStorage with the new 30 services
-    } else {
-        state.jobs = parsedServices;
-    }
-
-    // References
     const savedRefs = localStorage.getItem(STORAGE_KEYS.REFS);
-    const parsedRefs = savedRefs ? JSON.parse(savedRefs) : [];
-    // Force update if no refs or refs have old paths
-    const needsRefUpdate = parsedRefs.length === 0 || parsedRefs.some(r => r.image && r.image.includes('assets/references/'));
-    if (needsRefUpdate) {
-        state.references = [...APP_DATA.references];
-        persistReferences();
-    } else {
-        state.references = parsedRefs;
-    }
+    state.references = savedRefs ? JSON.parse(savedRefs) : [];
 
-    // Products
     const savedProducts = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    const parsedProducts = savedProducts ? JSON.parse(savedProducts) : [];
-    if (parsedProducts.length < APP_DATA.products.length) {
-        state.products = [...APP_DATA.products];
-        persistProducts();
-    } else {
-        state.products = parsedProducts;
-    }
+    state.products = savedProducts ? JSON.parse(savedProducts) : [];
 
     // Product Usage
     const savedProductUsage = localStorage.getItem('teklif_product_usage');
@@ -305,19 +653,11 @@ function loadData() {
     state.priceHistory = savedPriceHistory ? JSON.parse(savedPriceHistory) : {};
 
     // Customers
+    // Demo musteriler kaldirildi: her yeni hesaba 'Ahmet Yilmaz', 'Ayse Demir'
+    // gibi uydurma kayitlar ekleniyordu. Tek isletmelik demoda hosti, cok
+    // kullanicili urunde kullaniciyi kendi musterisi sanip aramaya iter.
     const savedCustomers = localStorage.getItem(STORAGE_KEYS.CUSTOMERS);
-    const parsedCustomers = savedCustomers ? JSON.parse(savedCustomers) : [];
-    if (parsedCustomers.length === 0) {
-        state.customers = [
-            { id: 'c1', name: 'Ahmet Yılmaz', phone: '0532 111 22 33', email: 'ahmet@mail.com', address: 'Urla, İzmir', updatedAt: Date.now() },
-            { id: 'c2', name: 'Ayşe Demir', phone: '0533 444 55 66', email: 'ayse@deneme.com', address: 'Çeşme, İzmir', updatedAt: Date.now() },
-            { id: 'c3', name: 'Global İnşaat A.Ş.', phone: '0232 777 88 99', email: 'info@globalinsaat.com', address: 'Bayraklı, İzmir', updatedAt: Date.now() }
-        ];
-        persistCustomers();
-    } else {
-        state.customers = parsedCustomers;
-    }
-
+    state.customers = savedCustomers ? JSON.parse(savedCustomers) : [];
     // Kanban
     const savedKanban = localStorage.getItem(STORAGE_KEYS.KANBAN);
     if (savedKanban) {
@@ -716,10 +1056,9 @@ function renderServiceList() {
 // ========================
 
 const SECTORAL_SERVICES = {
-    'demo': {
-        name: '🌟 Varsayılan Demo Verileri',
-        services: (typeof APP_DATA !== 'undefined' ? APP_DATA.jobs : [])
-    },
+    // 'demo' paketi kaldirildi: icerigi bizim gercek hizmet listemizdi ve
+    // sektorel paket ekranindan herkese aciktı.
+
     'peyzaj': {
         name: '🌳 Peyzaj ve Bahçe',
         services: [
@@ -2247,7 +2586,7 @@ function renderReferencesGrid() {
 function updateProposalHeaders() {
     const c = state.company;
     if (c.logo) els.companyLogo.innerHTML = `<img src="${c.logo}" style="max-height:120px; max-width:240px;">`;
-    else els.companyLogo.textContent = APP_DATA.company.logo_text || c.name.substring(0, 4).toUpperCase();
+    else els.companyLogo.textContent = c.logo_text || (c.name || '').substring(0, 4).toUpperCase();
 
     els.companyInfo.innerHTML = `<strong>${c.name}</strong><br>${c.address}<br>${c.phone}<br>${c.email}`;
     els.propClientName.textContent = state.customerName || '___________';
@@ -2802,7 +3141,7 @@ window.viewSavedProposal = function (id) {
 
         // Restore notes and conditions if available
         state.notes = p.notes || '';
-        state.conditions = p.conditions || (APP_DATA.settings ? APP_DATA.settings.conditions : '');
+        state.conditions = p.conditions || '';
 
         const notesEl = document.getElementById('proposalNotes');
         if (notesEl) notesEl.value = state.notes;
@@ -3490,11 +3829,31 @@ function renderStatusChart(kpis) {
 }
 
 async function boot() {
+    // 0) E-postadaki dogrulama baglantisindan gelinmis olabilir.
+    const verified = await consumeVerifyTokenFromUrl();
+
+    // 1) Kim giris yapmis?
+    currentUser = await fetchMe();
+    if (verified && currentUser) currentUser.email_verified = 1;
+    if (!currentUser) {
+        await showAuthScreen();
+        return;                       // giris yapilmadan uygulama hic kurulmuyor
+    }
+
+    // 2) Bu tarayicida baska bir hesabin verisi duruyorsa temizle.
+    //    Aksi halde asagidaki senkron, onceki kullanicinin verisini bu hesaba yazar.
+    if (localStorage.getItem(SESSION_USER_KEY) !== String(currentUser.id)) {
+        resetLocalData();
+        localStorage.setItem(SESSION_USER_KEY, String(currentUser.id));
+    }
+
+    // 3) Normal akis
     let reloading = false;
     try { reloading = await pullSyncOnLoad(); } catch (e) { /* çevrimdışı: yerelle devam */ }
     if (reloading) return; // sunucu daha yeniydi -> sayfa yenileniyor
     init();
     startSyncLoop();
+    renderUserHeader();
 }
 document.addEventListener('DOMContentLoaded', boot);
 

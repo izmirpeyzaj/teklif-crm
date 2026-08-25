@@ -23,6 +23,10 @@ const transporter = nodemailer.createTransport({
  * (i.e. not the placeholder defaults). Used to fail fast with a clear message.
  */
 function isMailConfigured() {
+    // Yerel gelistirme/test icin acik kapi: sahte adreslere gonderilen denemeler
+    // saglayicida "bounce" olarak birikir ve gonderen itibarini dusurur.
+    if (String(process.env.MAIL_DISABLED).toLowerCase() === 'true') return false;
+
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
     return !!(user && pass && MAIL_FROM
@@ -94,14 +98,23 @@ async function sendReminderEmail(customerEmail, customerName, projectName, total
  * @param {string} [opts.message]     Optional custom body text from the user
  * @param {Buffer} opts.pdfBuffer     The rendered PDF
  * @param {string} [opts.fileName]    Attachment file name
+ * @param {string} [opts.senderName]  Gonderen isletmenin adi (cok kullanicili mod)
+ * @param {string} [opts.replyTo]     Musterinin cevabinin gidecegi adres
  */
-async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName }) {
+async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName, senderName, replyTo }) {
     const safeMessage = (message && message.trim())
         ? message.trim().replace(/\n/g, '<br>')
         : `${projectName ? '<strong>' + projectName + '</strong> projesi için ' : ''}hazırladığımız teklifimizi ekte PDF olarak iletiyoruz.`;
 
+    // Zarfin gonderen adresi hep bizim dogrulanmis alan adimiz (baskasinin alan
+    // adindan gonderemeyiz, SPF/DKIM tutmaz). Ama musterinin gordugu ISIM teklifi
+    // hazirlayan isletmenin adi, ve "Yanitla" dedigine onun kendi kutusuna gider —
+    // aksi halde tum musteri cevaplari bize dusrdu.
+    const displayName = senderName || process.env.MAIL_FROM_NAME || 'Teklif';
+
     const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || 'Teklif'}" <${MAIL_FROM}>`,
+        from: `"${displayName}" <${MAIL_FROM}>`,
+        replyTo: replyTo || undefined,
         to,
         subject: `Teklifiniz${projectName ? ': ' + projectName : ''}`,
         html: `
@@ -125,5 +138,58 @@ async function sendProposalEmail({ to, customerName, projectName, message, pdfBu
     return transporter.sendMail(mailOptions);
 }
 
-module.exports = { sendFeedbackEmail, sendReminderEmail, sendProposalEmail, isMailConfigured };
+function shell(title, bodyHtml) {
+    return `
+        <div style="font-family: -apple-system, Segoe UI, Roboto, sans-serif; max-width:520px; margin:0 auto; padding:28px; color:#1e293b;">
+            <h2 style="margin:0 0 18px; color:#1b5e20;">${title}</h2>
+            ${bodyHtml}
+            <hr style="border:none; border-top:1px solid #e2e8f0; margin:26px 0 14px;">
+            <p style="font-size:12px; color:#94a3b8; margin:0;">
+                Bu e-postayi siz talep etmediyseniz dikkate almayin, hesabinizda bir degisiklik yapilmaz.
+            </p>
+        </div>`;
+}
+
+/**
+ * Sifre sifirlama baglantisi. Baglanti tek kullanimlik ve 1 saat gecerlidir.
+ */
+async function sendPasswordResetEmail({ to, link }) {
+    return transporter.sendMail({
+        from: `"${process.env.MAIL_FROM_NAME || 'Teklif'}" <${MAIL_FROM}>`,
+        to,
+        subject: 'Sifre sifirlama talebiniz',
+        html: shell('Sifrenizi sifirlayin', `
+            <p>Hesabiniz icin sifre sifirlama talebi aldik. Asagidaki butona tiklayarak yeni sifrenizi belirleyebilirsiniz.</p>
+            <p style="margin:24px 0;">
+                <a href="${link}" style="background:#2e7d32; color:#fff; padding:12px 22px; border-radius:8px; text-decoration:none; display:inline-block;">Yeni sifre belirle</a>
+            </p>
+            <p style="font-size:13px; color:#64748b;">Baglanti <strong>1 saat</strong> gecerlidir ve yalnizca bir kez kullanilabilir.</p>
+            <p style="font-size:12px; color:#94a3b8; word-break:break-all;">Buton calismazsa: ${link}</p>
+        `)
+    });
+}
+
+/**
+ * E-posta dogrulama baglantisi.
+ */
+async function sendVerificationEmail({ to, link }) {
+    return transporter.sendMail({
+        from: `"${process.env.MAIL_FROM_NAME || 'Teklif'}" <${MAIL_FROM}>`,
+        to,
+        subject: 'E-posta adresinizi dogrulayin',
+        html: shell('E-posta adresinizi dogrulayin', `
+            <p>Hesabinizi olusturdugunuz icin tesekkurler. Musterilerinize teklif <strong>gonderebilmek</strong> icin bu adresin size ait oldugunu dogrulamamiz gerekiyor.</p>
+            <p style="margin:24px 0;">
+                <a href="${link}" style="background:#2e7d32; color:#fff; padding:12px 22px; border-radius:8px; text-decoration:none; display:inline-block;">Adresimi dogrula</a>
+            </p>
+            <p style="font-size:13px; color:#64748b;">Dogrulamadan da giris yapip teklif hazirlayabilirsiniz; yalnizca e-posta gonderimi kapali kalir.</p>
+            <p style="font-size:12px; color:#94a3b8; word-break:break-all;">Buton calismazsa: ${link}</p>
+        `)
+    });
+}
+
+module.exports = {
+    sendFeedbackEmail, sendReminderEmail, sendProposalEmail, isMailConfigured,
+    sendPasswordResetEmail, sendVerificationEmail
+};
 

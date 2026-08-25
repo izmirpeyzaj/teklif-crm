@@ -3,7 +3,10 @@
 // Doğru şifre girilince imzalı (HMAC) HttpOnly bir çerez verilir; kaynak koddan bypass edilemez.
 const crypto = require('crypto');
 
-const SITE_PASSWORD = process.env.SITE_PASSWORD || '1234';
+// Varsayilan yok: gate yalnizca SITE_PASSWORD tanimliyken kuruluyor
+// (bkz. server.js). Buraya bir varsayilan koymak, degisken unutuldugunda
+// siteyi tahmin edilebilir bir sifreyle "korunuyor" gostermek olurdu.
+const SITE_PASSWORD = process.env.SITE_PASSWORD;
 const SECRET = process.env.JWT_SECRET || 'teklif-io-secret-key-12345';
 // Çerez değeri şifreyi içermez; şifre + secret'tan türetilen imzadır.
 const TOKEN = crypto.createHmac('sha256', SECRET).update('site-gate:' + SITE_PASSWORD).digest('hex');
