@@ -275,6 +275,22 @@ function rateLimiter({ windowMs, max }) {
 // tek kullanicinin ard arda istek yagdirmasini kisa vadede de kesmek gerekiyor.
 const pdfLimiter = rateLimiter({ windowMs: 10 * 60 * 1000, max: 20 });
 
+// Dogrulanmamis hesaplar disariya e-posta gonderemez. Kotuye kullanimin gercek
+// zarari burada: baskasinin adresiyle acilan bir hesap, bizim alan adimizdan
+// istedigine mail atabilirdi ve itibar bize yazilirdi.
+//
+// Bu kontrol KOTADAN ONCE calisiyor. Tersi olunca, hic gonderilmeyen bir mail
+// kullanicinin gunluk hakkindan dusuyordu.
+function requireVerifiedEmail(req, res, next) {
+    if (!req.user.email_verified) {
+        return res.status(403).json({
+            message: 'E-posta gonderebilmek icin once kendi adresinizi dogrulamaniz gerekiyor. Kayit sirasinda gonderdigimiz dogrulama baglantisina tiklayin.',
+            needsVerification: true
+        });
+    }
+    next();
+}
+
 router.use(requireAuth);
 
 function getOrigin(req) {
@@ -311,21 +327,12 @@ router.post('/preview', pdfLimiter, quota.enforce('pdf'), async (req, res) => {
 });
 
 // POST /api/pdf/send -> render the PDF and email it to the customer as attachment.
-router.post('/send', pdfLimiter, quota.enforce('email'), async (req, res) => {
+router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), async (req, res) => {
     try {
         const { html, customerEmail, customerName, projectName, message, fileName, senderName } = req.body;
         if (!html) return res.status(400).json({ message: 'Teklif içeriği (html) gerekli' });
         if (!customerEmail) return res.status(400).json({ message: 'Müşteri e-posta adresi gerekli' });
 
-        // Dogrulanmamis hesaplar disariya e-posta gonderemez. Kotuye kullanimin
-        // gercek zarari burada: baskasinin adresiyle acilan bir hesap, bizim
-        // alan adimizdan istedigine mail atabilirdi ve itibar bize yazilirdi.
-        if (!req.user.email_verified) {
-            return res.status(403).json({
-                message: 'E-posta gonderebilmek icin once kendi adresinizi dogrulamaniz gerekiyor. Kayit sirasinda gonderdigimiz dogrulama baglantisina tiklayin.',
-                needsVerification: true
-            });
-        }
         if (!isMailConfigured()) {
             return res.status(503).json({ message: 'E-posta gönderimi yapılandırılmamış. .env içine SMTP_USER ve SMTP_PASS ekleyin.' });
         }
