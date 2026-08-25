@@ -12,17 +12,21 @@ app.use(cors());
 // Larger limit: captured proposal HTML can embed a base64 logo / images.
 app.use(express.json({ limit: '15mb' }));
 
-// Şifre kapısı — statik dosyalardan ÖNCE, böylece tüm site (sayfa + API) korunur.
-require('./gate')(app);
-
-app.use(express.static(path.join(__dirname, 'public')));
+// Kapali beta duvari (istege bagli).
+// Tek isletmelik donemde bu, tum siteyi koruyan tek sifreydi. Artik gercek
+// uyelik sistemi var; SITE_PASSWORD tanimliysa kapi kayit ekraninin ONUNDE
+// durur ve site herkese acilmaz. Herkese acmak icin degiskeni kaldirmak yeterli.
+if (process.env.SITE_PASSWORD) {
+    console.log('Kapali beta modu: SITE_PASSWORD tanimli, site sifre kapisi arkasinda.');
+    require('./gate')(app);
+}
 
 let initError = null;
 
 app.get('/api/health', (req, res) => {
-    res.json({ 
-        status: 'ok', 
-        message: 'crm.izmirev.online API is running', 
+    res.json({
+        status: 'ok',
+        message: 'Teklif CRM API is running',
         initError: initError,
         env: process.env.NODE_ENV,
         nodeVersion: process.version
@@ -69,15 +73,20 @@ try {
     const db = require('./db_scripts/init');
     const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+    const session = require('./services/session');
+    const quota = require('./services/quota');
+
     // Import and use routes
     const authRoutes = require('./routes/auth');
-    const serviceRoutes = require('./routes/services');
-    const proposalRoutes = require('./routes/proposals');
-    const kanbanRoutes = require('./routes/kanban');
     const pdfRoutes = require('./routes/pdf');
     const syncRoutes = require('./routes/sync');
 
-    // Initialize Gemini
+    // Kullaniciya ait yuklemeler (AI gorselleri) statik klasorden ONCE korunur;
+    // aksi halde URL'i bilen herkes baska bir isletmenin teklif gorsellerini
+    // acabilirdi. Uygulamanin kendi varliklari (css, js, hazir gorseller) acik.
+    app.use('/uploads', session.requireAuth, express.static(path.join(__dirname, 'public', 'uploads')));
+    app.use(express.static(path.join(__dirname, 'public')));
+
     // Model adlari: gemini-2.0-* surumleri emekli edildi ve 404 donuyordu.
     // Guncel isimleri `GET /v1beta/models` listeler; degistirmeden once oradan dogrula.
     const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-3.7-flash';
@@ -86,47 +95,6 @@ try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSy_PLACEHOLDER_KEY');
     const model = genAI.getGenerativeModel({ model: TEXT_MODEL });
 
-    // Simple in-memory IP rate limiter for the public AI endpoints.
-    // The current frontend has no auth flow (USE_API=false / localStorage), so these
-    // routes are open. This caps abuse / accidental quota+cost drain without breaking them.
-    function rateLimiter({ windowMs, max }) {
-        const hits = new Map(); // ip -> [timestamps]
-        return (req, res, next) => {
-            const ip = req.ip || req.connection?.remoteAddress || 'unknown';
-            const now = Date.now();
-            const recent = (hits.get(ip) || []).filter(t => now - t < windowMs);
-            if (recent.length >= max) {
-                const retryAfter = Math.ceil((windowMs - (now - recent[0])) / 1000);
-                res.set('Retry-After', String(retryAfter));
-                return res.status(429).json({ error: 'Çok fazla istek. Lütfen biraz sonra tekrar deneyin.', retryAfter });
-            }
-            recent.push(now);
-            hits.set(ip, recent);
-            next();
-        };
-    }
-
-    const aiTextLimiter = rateLimiter({ windowMs: 10 * 60 * 1000, max: 30 }); // 30 / 10dk
-    const aiImageLimiter = rateLimiter({ windowMs: 10 * 60 * 1000, max: 10 }); // 10 / 10dk (görsel pahalı)
-
-    // AI Routes
-    app.post('/api/ai/text', aiTextLimiter, async (req, res) => {
-        try {
-            const { prompt } = req.body;
-            if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
-
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-
-            res.json({ text });
-        } catch (error) {
-            console.error('AI Error:', error);
-            res.status(500).json({ error: 'Failed to generate text', details: error.message });
-        }
-    });
-
-    // AI Image Generation
     const imageModel = genAI.getGenerativeModel({
         model: IMAGE_MODEL,
         generationConfig: {
@@ -134,7 +102,24 @@ try {
         }
     });
 
-    app.post('/api/ai/image', aiImageLimiter, async (req, res) => {
+    // AI uclari artik girise bagli ve kullanici basina gunluk kotali.
+    // Her cagri bizim Gemini anahtarimizdan para harcadigi icin IP bazli limit
+    // yetmiyordu: bir kullanici birden cok IP'den girebiliyor.
+    app.post('/api/ai/text', session.requireAuth, quota.enforce('ai_text'), async (req, res) => {
+        try {
+            const { prompt } = req.body;
+            if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            res.json({ text: response.text() });
+        } catch (error) {
+            console.error('AI Error:', error);
+            res.status(500).json({ error: 'Failed to generate text', details: error.message });
+        }
+    });
+
+    app.post('/api/ai/image', session.requireAuth, quota.enforce('ai_image'), async (req, res) => {
         try {
             const { serviceName } = req.body;
             if (!serviceName) return res.status(400).json({ error: 'serviceName is required' });
@@ -143,27 +128,24 @@ try {
 
             const result = await imageModel.generateContent(prompt);
             const response = await result.response;
-            const parts = response.candidates[0].content.parts;
+            const parts = (response.candidates && response.candidates[0] && response.candidates[0].content.parts) || [];
 
-            // Find the image part
             const imagePart = parts.find(p => p.inlineData);
             if (!imagePart) {
                 return res.status(500).json({ error: 'No image generated' });
             }
 
-            // Save image to public/uploads/ai/
-            const uploadsDir = path.join(__dirname, 'public', 'uploads', 'ai');
+            // Her kullanicinin gorselleri kendi klasorunde.
+            const uploadsDir = path.join(__dirname, 'public', 'uploads', 'ai', String(req.user.id));
             if (!fs.existsSync(uploadsDir)) {
                 fs.mkdirSync(uploadsDir, { recursive: true });
             }
 
             const filename = `ai_${Date.now()}.png`;
-            const filepath = path.join(uploadsDir, filename);
-            const buffer = Buffer.from(imagePart.inlineData.data, 'base64');
-            fs.writeFileSync(filepath, buffer);
+            fs.writeFileSync(path.join(uploadsDir, filename), Buffer.from(imagePart.inlineData.data, 'base64'));
 
-            const imageUrl = `/uploads/ai/${filename}`;
-            console.log(`AI Image generated: ${imageUrl}`);
+            const imageUrl = `/uploads/ai/${req.user.id}/${filename}`;
+            console.log(`AI Image generated for user ${req.user.id}: ${imageUrl}`);
             res.json({ imageUrl, filename });
         } catch (error) {
             console.error('AI Image Error:', error);
@@ -171,12 +153,19 @@ try {
         }
     });
 
+    // Kalan kotayi arayuzde gostermek icin.
+    app.get('/api/usage', session.requireAuth, (req, res) => {
+        res.json({ usage: quota.remaining(req.user.id) });
+    });
+
     app.use('/api/auth', authRoutes);
-    app.use('/api/services', serviceRoutes);
-    app.use('/api/proposals', proposalRoutes);
-    app.use('/api/kanban', kanbanRoutes);
     app.use('/api/pdf', pdfRoutes);
     app.use('/api/sync', syncRoutes);
+
+    // NOT: routes/services.js, routes/proposals.js, routes/kanban.js olu kod.
+    // Frontend'in tum verisi localStorage + /api/sync uzerinden akiyor; bu uclar
+    // hicbir yerden cagrilmiyor. Ilerde ilisikisel yapiya (B yolu) gecilirse
+    // temel olarak kullanilacaklar, o yuzden silinmediler ama baglanmadilar da.
 
 } catch (err) {
     console.error("Initialization error:", err);

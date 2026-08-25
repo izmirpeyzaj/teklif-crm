@@ -94,14 +94,23 @@ async function sendReminderEmail(customerEmail, customerName, projectName, total
  * @param {string} [opts.message]     Optional custom body text from the user
  * @param {Buffer} opts.pdfBuffer     The rendered PDF
  * @param {string} [opts.fileName]    Attachment file name
+ * @param {string} [opts.senderName]  Gonderen isletmenin adi (cok kullanicili mod)
+ * @param {string} [opts.replyTo]     Musterinin cevabinin gidecegi adres
  */
-async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName }) {
+async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName, senderName, replyTo }) {
     const safeMessage = (message && message.trim())
         ? message.trim().replace(/\n/g, '<br>')
         : `${projectName ? '<strong>' + projectName + '</strong> projesi için ' : ''}hazırladığımız teklifimizi ekte PDF olarak iletiyoruz.`;
 
+    // Zarfin gonderen adresi hep bizim dogrulanmis alan adimiz (baskasinin alan
+    // adindan gonderemeyiz, SPF/DKIM tutmaz). Ama musterinin gordugu ISIM teklifi
+    // hazirlayan isletmenin adi, ve "Yanitla" dedigine onun kendi kutusuna gider —
+    // aksi halde tum musteri cevaplari bize dusrdu.
+    const displayName = senderName || process.env.MAIL_FROM_NAME || 'Teklif';
+
     const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || 'Teklif'}" <${MAIL_FROM}>`,
+        from: `"${displayName}" <${MAIL_FROM}>`,
+        replyTo: replyTo || undefined,
         to,
         subject: `Teklifiniz${projectName ? ': ' + projectName : ''}`,
         html: `

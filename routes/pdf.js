@@ -3,6 +3,8 @@ const router = express.Router();
 const puppeteer = require('puppeteer');
 const { sendProposalEmail, isMailConfigured } = require('../services/mail');
 const gate = require('../gate');
+const { requireAuth } = require('../services/session');
+const quota = require('../services/quota');
 
 // ---------------------------------------------------------------------------
 // Headless Chromium (Puppeteer) — lazy singleton so we launch the browser once
@@ -211,7 +213,13 @@ function rateLimiter({ windowMs, max }) {
         next();
     };
 }
+// IP bazli limiter kullanici bazli kotaya birakildi: ayni ofisten giren iki
+// isletme birbirinin limitini yiyordu, tersine bir kullanici IP degistirerek
+// limiti asabiliyordu. rateLimiter yine de duruyor cunku PDF uretimi pahali ve
+// tek kullanicinin ard arda istek yagdirmasini kisa vadede de kesmek gerekiyor.
 const pdfLimiter = rateLimiter({ windowMs: 10 * 60 * 1000, max: 20 });
+
+router.use(requireAuth);
 
 function getOrigin(req) {
     return process.env.PUBLIC_ORIGIN || `${req.protocol}://${req.get('host')}`;
@@ -226,7 +234,7 @@ function sanitizeFileName(name) {
 }
 
 // POST /api/pdf/preview -> returns the PDF inline (download / preview).
-router.post('/preview', pdfLimiter, async (req, res) => {
+router.post('/preview', pdfLimiter, quota.enforce('pdf'), async (req, res) => {
     try {
         const { html, fileName } = req.body;
         if (!html) return res.status(400).json({ message: 'Teklif içeriği (html) gerekli' });
@@ -244,9 +252,9 @@ router.post('/preview', pdfLimiter, async (req, res) => {
 });
 
 // POST /api/pdf/send -> render the PDF and email it to the customer as attachment.
-router.post('/send', pdfLimiter, async (req, res) => {
+router.post('/send', pdfLimiter, quota.enforce('email'), async (req, res) => {
     try {
-        const { html, customerEmail, customerName, projectName, message, fileName } = req.body;
+        const { html, customerEmail, customerName, projectName, message, fileName, senderName } = req.body;
         if (!html) return res.status(400).json({ message: 'Teklif içeriği (html) gerekli' });
         if (!customerEmail) return res.status(400).json({ message: 'Müşteri e-posta adresi gerekli' });
         if (!isMailConfigured()) {
@@ -260,7 +268,11 @@ router.post('/send', pdfLimiter, async (req, res) => {
             projectName,
             message,
             pdfBuffer: pdf,
-            fileName: `${sanitizeFileName(fileName)}.pdf`
+            fileName: `${sanitizeFileName(fileName)}.pdf`,
+            // Gonderen kimligi oturumdan geliyor; istemcinin yolladigi senderName
+            // yalnizca firma adi icin bir tercih, cevap adresi degil.
+            senderName: senderName || req.user.company_name || undefined,
+            replyTo: req.user.email
         });
 
         res.json({ message: `Teklif PDF olarak ${customerEmail} adresine gönderildi.` });
