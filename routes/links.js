@@ -63,11 +63,11 @@ router.post('/', olusturmaLimiti, (req, res) => {
 
             db.prepare(`INSERT INTO proposal_links
                 (token_hash, org_id, proposal_code, proposal_id, customer_name, project_name,
-                 total, html, created_by, created_at, expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                 total, html, created_by, created_at, expires_at, origin)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
               .run(hash(token), req.user.org_id, String(proposalCode), proposalId ? String(proposalId) : null,
                    customerName || '', projectName || '', parseFloat(total) || 0, temizHtml,
-                   req.user.id, now, now + gun * 24 * 60 * 60 * 1000);
+                   req.user.id, now, now + gun * 24 * 60 * 60 * 1000, publicOrigin(req));
         })();
 
         res.json({ ok: true, link: publicOrigin(req) + '/t/' + token, expiresInDays: gun });

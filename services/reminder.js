@@ -67,7 +67,7 @@ function bekleyenleriBul(simdi) {
 // e-posta butonsuz gidiyor.
 function yeniBaglantiUret(orgId, kod) {
     const onceki = db.prepare(`
-        SELECT html, proposal_id, customer_name, project_name, total, created_by
+        SELECT html, proposal_id, customer_name, project_name, total, created_by, origin
         FROM proposal_links
         WHERE org_id = ? AND proposal_code = ?
         ORDER BY created_at DESC LIMIT 1
@@ -83,24 +83,25 @@ function yeniBaglantiUret(orgId, kod) {
               .run(now, orgId, kod);
             db.prepare(`INSERT INTO proposal_links
                 (token_hash, org_id, proposal_code, proposal_id, customer_name, project_name,
-                 total, html, created_by, created_at, expires_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                 total, html, created_by, created_at, expires_at, origin)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
               .run(crypto.createHash('sha256').update(token).digest('hex'), orgId, kod,
                    onceki.proposal_id, onceki.customer_name, onceki.project_name,
-                   onceki.total, onceki.html, onceki.created_by, now, now + 30 * GUN);
+                   onceki.total, onceki.html, onceki.created_by, now, now + 30 * GUN, onceki.origin);
         })();
     } catch (e) {
         console.error('Hatirlatma icin baglanti uretilemedi:', e.message);
         return null;
     }
 
-    // APP_ORIGIN burada ZORUNLU: bu is arka planda calisiyor, ortada bir HTTP
-    // istegi yok, yani adresi istegin host basligindan turetemeyiz. Tanimli
-    // degilse baglantiyi hic uretmiyoruz — yarim bir adresle e-posta gondermek,
-    // musterinin tikladiginda hicbir yere gitmemesi demek olurdu.
-    const kok = process.env.APP_ORIGIN;
+    // Adres, kullanicinin ilk baglantiyi olusturdugu istekten kaydedilmisti
+    // (proposal_links.origin). Bu is arka planda calisiyor ve elinde bir HTTP
+    // istegi yok; adresi baska turlu bilemezdi. Ortam degiskenine baglamak,
+    // yapilandirma unutuldugunda sessizce butonsuz e-posta gondermek olurdu —
+    // musteri tiklayacak bir sey bulamazdi. APP_ORIGIN yalnizca yedek.
+    const kok = onceki.origin || process.env.APP_ORIGIN;
     if (!kok) {
-        console.warn('APP_ORIGIN tanimli degil: hatirlatma e-postasi onay baglantisi olmadan gidecek.');
+        console.warn('Baglanti adresi bilinmiyor: hatirlatma onay baglantisi olmadan gidecek.');
         return null;
     }
     return kok.replace(/\/$/, '') + '/t/' + token;

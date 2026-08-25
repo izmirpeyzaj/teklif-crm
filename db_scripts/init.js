@@ -313,6 +313,11 @@ db.exec(`
         signer_name   TEXT,
         signature     TEXT,                      -- data:image/png;base64,...
         revoked_at    INTEGER,
+        -- Baglantinin uretildigi genel adres. Hatirlatma servisi arka planda
+        -- calisiyor ve elinde bir HTTP istegi yok; adresi bir ortam degiskenine
+        -- baglamak yerine, kullanicinin ilk baglantiyi olusturdugu adresi
+        -- saklayip yeniden kullaniyoruz. Boylece yapilandirma gerekmiyor.
+        origin        TEXT,
         FOREIGN KEY (org_id) REFERENCES organizations (id) ON DELETE CASCADE
     );
     CREATE INDEX IF NOT EXISTS idx_links_org ON proposal_links (org_id, created_at);
@@ -334,6 +339,13 @@ const orgCols = db.prepare("PRAGMA table_info(organizations)").all().map(c => c.
 if (!orgCols.includes('member_sees_profit')) {
     db.exec("ALTER TABLE organizations ADD COLUMN member_sees_profit INTEGER NOT NULL DEFAULT 1");
     console.log('organizations.member_sees_profit eklendi');
+}
+
+// Var olan kurulumlarda proposal_links tablosuna origin sutununu ekle.
+const linkCols = db.prepare("PRAGMA table_info(proposal_links)").all().map(c => c.name);
+if (linkCols.length && !linkCols.includes('origin')) {
+    db.exec("ALTER TABLE proposal_links ADD COLUMN origin TEXT");
+    console.log('proposal_links.origin eklendi');
 }
 
 // Otomatik hatirlatma ayarlari.
