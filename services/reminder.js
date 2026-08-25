@@ -43,7 +43,7 @@ function bekleyenleriBul(simdi) {
         GROUP BY g.org_id, g.proposal_code
     `).all().filter(r => {
         if (!r.to_email || !r.email_verified) return false;
-        if (!r.status || r.status === 'Kabul Edildi' || r.status === 'Reddedildi') return false;
+        if (!r.status || r.status === 'Kabul' || r.status === 'Red') return false;
         if (simdi - r.ilk_gonderim < (r.reminder_days || 3) * GUN) return false;
 
         // Musteri baglantiyi acip karar verdiyse hatirlatma anlamsiz.

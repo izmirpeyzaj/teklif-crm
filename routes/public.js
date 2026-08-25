@@ -301,7 +301,10 @@ router.post('/t/:token/karar', kararLimiti, express.json({ limit: '2mb' }), (req
 
         // Teklifin durumunu da guncelle ki panoda elle tasimak gerekmesin.
         db.prepare('UPDATE proposals SET status = ?, updated_at = ? WHERE org_id = ? AND code = ?')
-          .run(decision === 'accepted' ? 'Kabul Edildi' : 'Reddedildi', Date.now(), b.org_id, b.proposal_code);
+        // 'Kabul' / 'Red': arayuzdeki STATUS_TO_LIST ile AYNI degerler olmali.
+        // Farkli yazilinca (Kabul Edildi / Accepted) musteri onaylasa bile
+        // pano karti yerinde kaliyor ve teklif kar raporuna girmiyordu.
+          .run(decision === 'accepted' ? 'Kabul' : 'Red', Date.now(), b.org_id, b.proposal_code);
 
         res.json({ ok: true });
     } catch (err) {

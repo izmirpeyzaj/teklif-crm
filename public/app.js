@@ -252,6 +252,270 @@ async function pullSyncOnLoad() {
 }
 
 // ====================================
+// KARLILIK VE TAHSILAT RAPORLARI
+// ====================================
+// "Ne kadar is yaptim" sorusunun cevabi zaten vardi (ciro). Eksik olan
+// "ne kadar KAZANDIM" ve "parasi geldi mi" sorulariydi.
+//
+// Onemli ayrim: teklif tutari niyet, KABUL EDILEN teklif gercek. Kar
+// raporlari yalnizca kabul edilenleri sayar; bekleyen teklifleri katmak
+// olmamis bir kari olmus gibi gostermek olurdu.
+
+function kabulEdilenTeklifler() {
+    return (state.savedProposals || []).filter(kabulEdildiMi);
+}
+
+// Hangi hizmet ne kazandiriyor. Kalem bazinda toplar; boylece "en cok
+// kazandiran isim hangisi" ve "hangisini zararina yapiyorum" gorunur olur.
+function hizmetKarliligi() {
+    const tablo = new Map();
+
+    kabulEdilenTeklifler().forEach(t => {
+        // Toplu iskonto/zam kalemlere oransal dagitilir; aksi halde iskonto
+        // yapilan tekliflerdeki kalemler oldugundan karli gorunurdu.
+        const av = parseFloat(t.discountValue) || 0;
+        let carpan = 1;
+        if (t.discountType === 'zam') carpan = 1 + av / 100;
+        else if (t.discountType === 'iskonto' || t.discountType === 'percentage') carpan = 1 - av / 100;
+        else if (t.discountType === 'amount') {
+            const ham = [...(t.items || []), ...(t.products || [])]
+                .reduce((a, i) => a + (parseFloat(i.price) || 0) * (parseFloat(i.qty) || 0), 0);
+            carpan = ham > 0 ? (ham - av) / ham : 1;
+        }
+
+        [...(t.items || []), ...(t.products || [])].forEach(i => {
+            if (!i || !i.name) return;
+            const adet = parseFloat(i.qty) || 0;
+            const gelir = (parseFloat(i.price) || 0) * adet * carpan;
+            const maliyetVar = i.cost != null && i.cost !== '';
+            const maliyet = maliyetVar ? (parseFloat(i.cost) || 0) * adet : 0;
+
+            const k = tablo.get(i.name) || { ad: i.name, adet: 0, gelir: 0, maliyet: 0, maliyetli: 0, kalem: 0 };
+            k.adet += adet;
+            k.gelir += gelir;
+            k.maliyet += maliyet;
+            k.kalem++;
+            if (maliyetVar) k.maliyetli++;
+            tablo.set(i.name, k);
+        });
+    });
+
+    return [...tablo.values()].map(k => ({
+        ...k,
+        kar: k.gelir - k.maliyet,
+        marj: k.gelir > 0 ? ((k.gelir - k.maliyet) / k.gelir * 100) : 0,
+        // Hicbir kaleminde maliyet yoksa "kar = ciro" cikar; bunu kar diye
+        // gostermek yaniltici olur, ayri isaretliyoruz.
+        maliyetVar: k.maliyetli > 0
+    })).sort((a, b) => b.kar - a.kar);
+}
+
+function renderKarlilik() {
+    const alan = document.getElementById('karlilikBolumu');
+    if (!alan) return;
+    // Maliyet gormeye yetkisi olmayana kar raporu da yok.
+    if (!_maliyetGorunur) { alan.innerHTML = ''; return; }
+
+    const kabuller = kabulEdilenTeklifler();
+    if (!kabuller.length) {
+        alan.innerHTML = '<div class="chart-card"><div class="chart-header"><h3>📈 Kârlılık</h3></div>' +
+            '<p class="hint" style="padding:10px 4px;">Henüz kabul edilmiş teklif yok. Teklif kabul edildikçe ' +
+            'kârlılık burada görünür.</p></div>';
+        return;
+    }
+
+    let gelir = 0, maliyet = 0, maliyetli = 0;
+    kabuller.forEach(t => {
+        const k = teklifKar(t);
+        gelir += k.revenue;
+        maliyet += k.cost;
+        if (k.hasCost) maliyetli++;
+    });
+    const brut = gelir - maliyet;
+    const marj = gelir > 0 ? brut / gelir * 100 : 0;
+
+    // Genel gider: kira, arac, sigorta gibi teklife yazilmayan sabit giderler.
+    // Aylik girilir; kac ayi kapsadigini kabul edilen tekliflerin tarih
+    // araligindan hesapliyoruz ki tek ayin gideri tum donemden dusulmesin.
+    const aylikGider = parseFloat((state.company && state.company.monthlyOverhead) || 0) || 0;
+    const tarihler = kabuller.map(t => new Date(t.date || t.createdAt || Date.now()).getTime()).sort();
+    const ayFarki = tarihler.length
+        ? Math.max(1, Math.round((tarihler[tarihler.length - 1] - tarihler[0]) / (30 * 24 * 3600 * 1000)) + 1)
+        : 1;
+    const toplamGider = aylikGider * ayFarki;
+    const net = brut - toplamGider;
+
+    const satirlar = hizmetKarliligi().slice(0, 12).map(h => `
+        <tr>
+            <td style="padding:7px 6px; font-size:.84rem;">${kacisliMetin(h.ad)}</td>
+            <td style="padding:7px 6px; text-align:right; font-size:.82rem; color:var(--text-muted);">${h.adet.toLocaleString('tr-TR')}</td>
+            <td style="padding:7px 6px; text-align:right; font-size:.84rem;">${formatCurrency(h.gelir)}</td>
+            <td style="padding:7px 6px; text-align:right; font-size:.84rem; font-weight:600; color:${h.maliyetVar ? (h.kar >= 0 ? '#16a34a' : '#dc2626') : '#94a3b8'};">
+                ${h.maliyetVar ? formatCurrency(h.kar) : '—'}
+            </td>
+            <td style="padding:7px 6px; text-align:right; font-size:.82rem; color:${h.maliyetVar ? (h.marj >= 0 ? '#16a34a' : '#dc2626') : '#94a3b8'};">
+                ${h.maliyetVar ? '%' + h.marj.toFixed(0) : '—'}
+            </td>
+        </tr>`).join('');
+
+    alan.innerHTML = `
+      <div class="chart-card">
+        <div class="chart-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3>📈 Kârlılık</h3>
+            <span style="font-size:.7rem; background:#f1f5f9; color:#475569; padding:3px 9px; border-radius:10px;">🔒 müşteriye gösterilmez</span>
+        </div>
+
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; padding:12px 4px;">
+            ${karKutusu('Kabul Edilen Ciro', formatCurrency(gelir), '#0f172a')}
+            ${karKutusu('Toplam Maliyet', maliyetli ? formatCurrency(maliyet) : '—', '#0f172a')}
+            ${karKutusu('Brüt Kâr', maliyetli ? formatCurrency(brut) : '—', brut >= 0 ? '#16a34a' : '#dc2626')}
+            ${karKutusu('Kâr Marjı', maliyetli ? '%' + marj.toFixed(1) : '—', marj >= 0 ? '#16a34a' : '#dc2626')}
+        </div>
+
+        ${maliyetli < kabuller.length ? `<p class="hint" style="padding:0 4px 10px; color:#b45309;">
+            ⚠️ ${kabuller.length - maliyetli} kabul edilmiş teklifte hiç maliyet girilmemiş. Gerçek kârınız bundan düşük olabilir.</p>` : ''}
+
+        <div style="border-top:1px solid var(--border); padding:14px 4px 4px;">
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <label style="font-size:.84rem; font-weight:600;">Aylık genel gider</label>
+                <input type="number" id="aylikGiderGirdi" class="form-control" style="width:130px; padding:6px 9px; font-size:.86rem;"
+                       value="${aylikGider || ''}" placeholder="0" onchange="aylikGideriKaydet(this.value)">
+                <span style="font-size:.8rem; color:var(--text-muted);">₺ / ay (kira, araç, sigorta…)</span>
+            </div>
+            ${aylikGider ? `
+            <div style="display:grid; grid-template-columns:1fr auto; gap:6px; margin-top:12px; font-size:.86rem; max-width:420px;">
+                <div style="color:var(--text-muted);">Brüt kâr</div><div style="text-align:right; font-weight:600;">${formatCurrency(brut)}</div>
+                <div style="color:var(--text-muted);">Genel gider (${ayFarki} ay)</div><div style="text-align:right; font-weight:600; color:#dc2626;">− ${formatCurrency(toplamGider)}</div>
+                <div style="border-top:1px solid var(--border); padding-top:6px; font-weight:700;">Net kâr</div>
+                <div style="border-top:1px solid var(--border); padding-top:6px; text-align:right; font-weight:700; color:${net >= 0 ? '#16a34a' : '#dc2626'};">${formatCurrency(net)}</div>
+            </div>` : '<p class="hint" style="margin:8px 0 0;">Girerseniz brüt kârdan düşülüp net kârınız hesaplanır.</p>'}
+        </div>
+
+        <div style="border-top:1px solid var(--border); margin-top:14px; padding-top:12px;">
+            <div style="font-size:.88rem; font-weight:600; margin-bottom:8px;">Hizmet bazlı kârlılık</div>
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; min-width:460px;">
+                <thead><tr style="border-bottom:1px solid var(--border);">
+                    <th style="text-align:left; padding:6px; font-size:.74rem; color:var(--text-muted); font-weight:600;">HİZMET</th>
+                    <th style="text-align:right; padding:6px; font-size:.74rem; color:var(--text-muted); font-weight:600;">ADET</th>
+                    <th style="text-align:right; padding:6px; font-size:.74rem; color:var(--text-muted); font-weight:600;">CİRO</th>
+                    <th style="text-align:right; padding:6px; font-size:.74rem; color:var(--text-muted); font-weight:600;">KÂR</th>
+                    <th style="text-align:right; padding:6px; font-size:.74rem; color:var(--text-muted); font-weight:600;">MARJ</th>
+                </tr></thead>
+                <tbody>${satirlar}</tbody>
+              </table>
+            </div>
+        </div>
+      </div>`;
+}
+
+function karKutusu(baslik, deger, renk) {
+    return `<div style="background:var(--bg-soft, #f8fafc); border:1px solid var(--border); border-radius:9px; padding:11px 13px;">
+        <div style="font-size:.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em;">${baslik}</div>
+        <div style="font-size:1.16rem; font-weight:700; color:${renk}; margin-top:3px;">${deger}</div>
+    </div>`;
+}
+
+window.aylikGideriKaydet = (v) => {
+    state.company = state.company || {};
+    state.company.monthlyOverhead = parseFloat(v) || 0;
+    persistCompany();
+    renderKarlilik();
+};
+
+// ------------------------------------------------------------------
+// Tahsilat
+// ------------------------------------------------------------------
+// Kabul edilen teklif ciro degil, ALACAK. Parasi gelene kadar is bitmis
+// sayilmaz. Odemeler teklifin govdesinde tutuluyor (payments dizisi), ayri
+// tablo gerekmiyor: teklif zaten sunucuya gidip geliyor.
+
+function odenenTutar(t) {
+    return (t.payments || []).reduce((a, o) => a + (parseFloat(o.amount) || 0), 0);
+}
+
+function vadeTarihi(t) {
+    // Ayri bir vade alani yok; kabul tarihinden 30 gun sonrasini esas aliyoruz.
+    // Kullanici isterse odemeyi elle isaretleyebiliyor, bu yalnizca uyari icin.
+    const t0 = new Date(t.date || t.createdAt || Date.now()).getTime();
+    return t0 + 30 * 24 * 3600 * 1000;
+}
+
+function renderTahsilat() {
+    const alan = document.getElementById('tahsilatBolumu');
+    if (!alan) return;
+
+    const kabuller = kabulEdilenTeklifler();
+    if (!kabuller.length) { alan.innerHTML = ''; return; }
+
+    let toplam = 0, tahsil = 0;
+    const bekleyenler = [];
+    kabuller.forEach(t => {
+        const tut = parseFloat(t.total) || 0;
+        const od = odenenTutar(t);
+        toplam += tut; tahsil += od;
+        if (od < tut - 0.01) bekleyenler.push({ t, kalan: tut - od, gecikti: Date.now() > vadeTarihi(t) });
+    });
+    const kalan = toplam - tahsil;
+    const geciken = bekleyenler.filter(b => b.gecikti);
+
+    const satirlar = bekleyenler
+        .sort((a, b) => (b.gecikti - a.gecikti) || (b.kalan - a.kalan))
+        .slice(0, 15)
+        .map(b => `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border);">
+            <div style="min-width:0;">
+                <div style="font-size:.87rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    ${kacisliMetin(b.t.customerName || '—')}
+                    ${b.gecikti ? '<span style="font-size:.68rem; font-weight:700; color:#b91c1c; background:#fee2e2; padding:1px 7px; border-radius:9px; margin-left:6px;">VADESİ GEÇTİ</span>' : ''}
+                </div>
+                <div style="font-size:.75rem; color:var(--text-muted);">${kacisliMetin(b.t.code)} · ${formatDate(b.t.date)}</div>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; white-space:nowrap;">
+                <span style="font-weight:700; font-size:.9rem;">${formatCurrency(b.kalan)}</span>
+                <button class="btn btn-secondary" style="padding:5px 10px; font-size:.75rem;"
+                        onclick="odemeIsaretle('${b.t.id}')">Tahsil edildi</button>
+            </div>
+        </div>`).join('');
+
+    alan.innerHTML = `
+      <div class="chart-card">
+        <div class="chart-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <h3>💰 Tahsilat</h3>
+            ${geciken.length ? `<span style="font-size:.75rem; color:#b91c1c; font-weight:600;">${geciken.length} teklifin vadesi geçti</span>` : ''}
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; padding:12px 4px;">
+            ${karKutusu('Kabul Edilen Toplam', formatCurrency(toplam), '#0f172a')}
+            ${karKutusu('Tahsil Edilen', formatCurrency(tahsil), '#16a34a')}
+            ${karKutusu('Tahsil Bekleyen', formatCurrency(kalan), kalan > 0 ? '#b45309' : '#16a34a')}
+        </div>
+        ${bekleyenler.length
+            ? `<div style="border-top:1px solid var(--border); padding-top:8px;">${satirlar}</div>`
+            : '<p class="hint" style="padding:0 4px 8px; color:#16a34a;">✓ Tüm kabul edilen tekliflerin tahsilatı tamam.</p>'}
+      </div>`;
+}
+
+window.odemeIsaretle = (teklifId) => {
+    const t = state.savedProposals.find(x => String(x.id) === String(teklifId));
+    if (!t) return;
+    const kalan = (parseFloat(t.total) || 0) - odenenTutar(t);
+
+    const girilen = prompt(
+        `${t.customerName} — ${t.code}\nKalan: ${formatCurrency(kalan)}\n\nTahsil edilen tutarı yazın ` +
+        `(tamamı için boş bırakıp Tamam'a basın):`, '');
+    if (girilen === null) return;               // iptal
+
+    const tutar = girilen.trim() === '' ? kalan : (parseFloat(girilen.replace(',', '.')) || 0);
+    if (tutar <= 0) return;
+
+    t.payments = t.payments || [];
+    t.payments.push({ amount: Math.min(tutar, kalan), date: Date.now() });
+    persistProposals();
+    renderTahsilat();
+    renderKarlilik();
+};
+
+// ====================================
 // MUSTERI ONAY BAGLANTISI
 // ====================================
 // Teklif gonderildikten sonra "kabul mu, ret mi" bilgisi telefonda kaliyor ve
@@ -1181,6 +1445,16 @@ function loadData() {
 
     // Sync proposals to Kanban to ensure visibility
     syncProposalsToKanban();
+
+    // Sunucu ile panoyu uzlastir.
+    //
+    // Musteri onay baglantisindan kabul/ret verdiginde durumu SUNUCU yaziyor;
+    // bu tarayicidaki pano bundan habersiz. Uzlastirmazsak teklif 'Kabul'
+    // gorunurken karti 'Open' sutununda kaliyor — ve kabulEdildiMi() panoya
+    // oncelik verdigi icin o teklif kar ve tahsilat raporlarina hic girmiyor.
+    state.savedProposals.forEach(t => {
+        if (durumListesi(t.status)) moveKanbanCardForProposal(t);
+    });
 
     // Migration: Convert card.notes to card.comments
     state.kanban.forEach(list => {
@@ -2297,7 +2571,7 @@ function kabulEdildiMi(p) {
         c => (c.proposals || []).includes(p.code)
     ));
     if (liste) return liste.id === 'list-accepted';
-    return p.status === 'Kabul Edildi' || p.status === 'Accepted';
+    return durumListesi(p.status) === 'list-accepted';
 }
 
 function renderCustomerList() {
@@ -3099,6 +3373,23 @@ window.handleProposalSearch = function () {
     renderSavedProposals(els.proposalSearchInput.value);
 };
 
+// Onay baglantisi durumlari — teklif kodundan duruma. Teklif basina ayri istek
+// atmamak icin tek seferde cekilip burada tutuluyor.
+let _onayDurumlari = {};
+
+async function onayDurumlariniYukle() {
+    try {
+        const r = await fetch('/api/links');
+        if (!r.ok) return;
+        const j = await r.json();
+        const yeni = {};
+        // Liste yeniden eskiye sirali; ilk gorulen en guncel baglantidir.
+        (j.links || []).forEach(l => { if (!yeni[l.proposal_code]) yeni[l.proposal_code] = l; });
+        _onayDurumlari = yeni;
+        renderSavedProposals(els.proposalSearchInput ? els.proposalSearchInput.value : '');
+    } catch (e) { /* cevrimdisi: rozetsiz devam */ }
+}
+
 function renderSavedProposals(filter = '') {
     if (!els.savedProposalsList) return;
 
@@ -3121,14 +3412,22 @@ function renderSavedProposals(filter = '') {
         d.className = 'service-item';
         d.style.cursor = 'pointer';
         d.title = 'Teklifi Yükle';
-        let st = p.status || 'Beklemede';
-        if (!['Beklemede', 'Kabul', 'Red'].includes(st)) st = 'Beklemede';
+        // Eski kayitlarda durum 'Kabul Edildi' / 'Accepted' olarak gecebiliyor.
+        // Tam esitlikle bakinca bunlar listede 'Beklemede' gorunuyordu — yani
+        // musteri onaylamis teklif, arayuzde hâlâ cevap bekliyor sanilıyordu.
+        const _liste = durumListesi(p.status);
+        const st = _liste === 'list-accepted' ? 'Kabul'
+                 : _liste === 'list-declined' ? 'Red' : 'Beklemede';
         const stColor = { Beklemede: '#d97706', Kabul: '#16a34a', Red: '#dc2626' }[st];
         d.innerHTML = `
             <div onclick="loadProposalById(${p.id})">
                 <div class="service-item-info">${p.code}</div>
                 <div class="service-item-sub">${p.customerName} - ${p.projectName} (${p.items ? p.items.length : 0} kalem)</div>
-                <div style="font-size:0.8rem; font-weight:700; color:var(--secondary); margin-top:2px;">${formatCurrency(p.total || 0)}</div>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:2px;">
+                    <span style="font-size:0.8rem; font-weight:700; color:var(--secondary);">${formatCurrency(p.total || 0)}</span>
+                    ${onayDurumRozeti(_onayDurumlari[p.code])}
+                    ${p.createdByName ? `<span style="font-size:.68rem; color:var(--text-muted);" title="Teklifi oluşturan">👤 ${kacisliMetin(p.createdByName)}</span>` : ''}
+                </div>
             </div>
             <div class="service-actions" style="display:flex; align-items:center; gap:8px;">
                 <select onclick="event.stopPropagation()" onchange="setProposalStatus(${p.id}, this.value)" title="Durum"
@@ -3162,11 +3461,25 @@ window.deleteProposal = function (id) {
 // Teklif durumu <-> Kanban listesi eslesmesi. "Received" (teklif iletildi) bilerek
 // disarida: bir teklifin durumu ile ayni anlama gelmiyor, oraya suruklemek durumu bozmasin.
 const STATUS_TO_LIST = { 'Beklemede': 'list-open', 'Kabul': 'list-accepted', 'Red': 'list-declined' };
+
+// Durum degeri zaman icinde uc farkli sekilde yazilmis: 'Kabul' (arayuz),
+// 'Kabul Edildi' (onay baglantisinin ilk surumu), 'Accepted' (en eski kayitlar).
+// Tam esitlikle karsilastirmak, eski kayitlari sessizce 'bekliyor' saymaya yol
+// aciyordu — musteri onaylamis teklif kar ve tahsilat raporlarina hic girmiyordu.
+// Bu yuzden esitlik yerine normallestirme kullaniyoruz.
+function durumListesi(durum) {
+    const d = String(durum || '').toLocaleLowerCase('tr');
+    if (!d) return null;
+    if (d.includes('kabul') || d.includes('onay') || d === 'accepted') return 'list-accepted';
+    if (d.includes('red') || d.includes('iptal') || d === 'declined') return 'list-declined';
+    if (d.includes('bekle') || d === 'pending') return 'list-open';
+    return null;
+}
 const LIST_TO_STATUS = { 'list-open': 'Beklemede', 'list-accepted': 'Kabul', 'list-declined': 'Red' };
 
 // Bir teklifin durumu degisince, o teklifi tasiyan Kanban kartini dogru listeye tasi.
 function moveKanbanCardForProposal(proposal) {
-    const targetListId = STATUS_TO_LIST[proposal.status];
+    const targetListId = durumListesi(proposal.status);
     if (!targetListId) return false;
 
     let moved = false;
@@ -3226,6 +3539,7 @@ window.switchTab = (n) => {
     if (n === 'proposals') {
         if (els.tabProposals) els.tabProposals.classList.remove('hidden');
         renderSavedProposals();
+        onayDurumlariniYukle();   // rozetler icin; gelince liste yeniden cizilir
     }
     if (n === 'services') els.tabServices.classList.remove('hidden');
     if (n === 'products') {
@@ -4402,6 +4716,8 @@ function renderDashboard() {
     renderRevenueChart();
     renderStatusChart({ acceptedCount, pendingCount, rejectedCount });
     renderFollowUps();
+    renderKarlilik();
+    renderTahsilat();
 }
 
 // Telefonu WhatsApp formatına çevir (90XXXXXXXXXX)
