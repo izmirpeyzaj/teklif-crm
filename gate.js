@@ -57,7 +57,7 @@ async function doLogin(e){
 </body></html>`;
 }
 
-module.exports = function installGate(app) {
+function installGate(app) {
     // Giriş ucu — geçerli çerez olmadan da erişilebilir olmalı
     app.post('/__auth', (req, res) => {
         const pw = (req.body && req.body.password) || '';
@@ -82,3 +82,10 @@ module.exports = function installGate(app) {
         return res.status(401).type('html').send(loginPage());
     });
 };
+
+// PDF üreten Puppeteer'ın (ve diğer sunucu içi isteklerin) kapıdan geçebilmesi için
+// çerez adı + geçerli token'ı dışa açıyoruz. Şifrenin kendisi burada paylaşılmıyor.
+installGate.COOKIE_NAME = COOKIE;
+installGate.TOKEN = TOKEN;
+
+module.exports = installGate;

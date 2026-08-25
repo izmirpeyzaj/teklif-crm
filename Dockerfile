@@ -1,4 +1,6 @@
-FROM node:18-slim
+# Node 20+ zorunlu: better-sqlite3 12.x engines alani 18'i desteklemiyor
+# (node:18 ile npm install derleme asamasinda hata veriyor). 22 = aktif LTS.
+FROM node:22-slim
 
 # better-sqlite3 derleme araçları + Puppeteer için sistem Chromium'u ve fontlar
 RUN apt-get update && apt-get install -y \

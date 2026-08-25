@@ -1,5 +1,11 @@
 const nodemailer = require('nodemailer');
 
+// The sender address is deliberately separate from SMTP_USER: with Resend the
+// SMTP username is the literal string "resend", so deriving the From header from
+// it would produce an invalid address. MAIL_FROM must be on a domain verified
+// with the mail provider, otherwise the provider rejects the message.
+const MAIL_FROM = process.env.MAIL_FROM || process.env.SMTP_USER || 'your-email@gmail.com';
+
 // SMTP credentials come from environment variables (.env).
 const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
 const transporter = nodemailer.createTransport({
@@ -19,7 +25,10 @@ const transporter = nodemailer.createTransport({
 function isMailConfigured() {
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
-    return !!(user && pass && user !== 'your-email@gmail.com' && pass !== 'your-app-password');
+    return !!(user && pass && MAIL_FROM
+        && user !== 'your-email@gmail.com'
+        && pass !== 'your-app-password'
+        && MAIL_FROM !== 'your-email@gmail.com');
 }
 
 /**
@@ -27,7 +36,7 @@ function isMailConfigured() {
  */
 async function sendFeedbackEmail(customerEmail, customerName, projectName, total) {
     const mailOptions = {
-        from: `"teklif.io" <${process.env.SMTP_USER || 'your-email@gmail.com'}>`,
+        from: `"teklif.io" <${MAIL_FROM}>`,
         to: customerEmail,
         subject: `Teklif Onayı Bekleniyor: ${projectName}`,
         html: `
@@ -54,7 +63,7 @@ async function sendFeedbackEmail(customerEmail, customerName, projectName, total
  */
 async function sendReminderEmail(customerEmail, customerName, projectName, total) {
     const mailOptions = {
-        from: `"teklif.io Hatırlatma" <${process.env.SMTP_USER || 'your-email@gmail.com'}>`,
+        from: `"teklif.io Hatırlatma" <${MAIL_FROM}>`,
         to: customerEmail,
         subject: `Hatırlatma: Teklif Onayı Bekleniyor - ${projectName}`,
         html: `
@@ -92,7 +101,7 @@ async function sendProposalEmail({ to, customerName, projectName, message, pdfBu
         : `${projectName ? '<strong>' + projectName + '</strong> projesi için ' : ''}hazırladığımız teklifimizi ekte PDF olarak iletiyoruz.`;
 
     const mailOptions = {
-        from: `"${process.env.MAIL_FROM_NAME || 'Teklif'}" <${process.env.SMTP_USER}>`,
+        from: `"${process.env.MAIL_FROM_NAME || 'Teklif'}" <${MAIL_FROM}>`,
         to,
         subject: `Teklifiniz${projectName ? ': ' + projectName : ''}`,
         html: `

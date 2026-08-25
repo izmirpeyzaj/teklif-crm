@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const puppeteer = require('puppeteer');
 const { sendProposalEmail, isMailConfigured } = require('../services/mail');
+const gate = require('../gate');
 
 // ---------------------------------------------------------------------------
 // Headless Chromium (Puppeteer) — lazy singleton so we launch the browser once
@@ -47,16 +48,139 @@ function buildDocument(bodyHtml, origin) {
 </html>`;
 }
 
+// The proposal photos are 1024px PNGs (~1.2MB each), which pushed a typical
+// proposal PDF past 10MB — too heavy to email. Before printing we redraw each
+// photo through the page's own canvas as a JPEG sized to how big it actually
+// prints. Two things matter here:
+//
+//   * size follows the printed box, not the source file. A service thumbnail
+//     prints at ~160pt, so a 1024px source carries ~40x the pixels the page can
+//     show. PRINT_DPI_FACTOR keeps enough detail to stay crisp on paper.
+//   * the crop is baked in and object-fit is switched to `fill`. The cards use
+//     `object-fit: cover`, and Chromium re-rasterises a cropped image into a
+//     lossless bitmap when printing — ~1MB per photo, which cancelled out the
+//     entire downscale. Cropping in the canvas makes the bitmap match its box
+//     1:1, so our JPEG is embedded as-is.
+//
+// Uses only the page's canvas, so no image library dependency; the images are
+// same-origin here, so the canvas is not tainted.
+const PDF_PRINT_DPI_FACTOR = 2.5;  // ~240 DPI at the printed size
+const PDF_IMAGE_QUALITY = 0.82;
+
+async function downscaleImages(page) {
+    try {
+        const stats = await page.evaluate(async (dpiFactor, quality) => {
+            const ready = img => img.complete
+                ? Promise.resolve()
+                : new Promise(r => { img.onload = r; img.onerror = r; });
+
+            let before = 0, after = 0, count = 0;
+
+            await Promise.all(Array.from(document.images).map(async img => {
+                await ready(img);
+                if (!img.naturalWidth || !img.naturalHeight) return;
+
+                const rect = img.getBoundingClientRect();
+                if (rect.width < 1 || rect.height < 1) return;
+
+                const cover = getComputedStyle(img).objectFit === 'cover';
+                const boxRatio = rect.width / rect.height;
+
+                // Source rectangle: the whole image, or the centre crop `cover` shows.
+                let sx = 0, sy = 0, sw = img.naturalWidth, sh = img.naturalHeight;
+                if (cover) {
+                    if (sw / sh > boxRatio) {
+                        sw = sh * boxRatio;
+                        sx = (img.naturalWidth - sw) / 2;
+                    } else {
+                        sh = sw / boxRatio;
+                        sy = (img.naturalHeight - sh) / 2;
+                    }
+                }
+
+                // Never upscale past what the source actually holds.
+                const targetW = Math.round(Math.min(sw, rect.width * dpiFactor));
+                const targetH = Math.round(targetW / boxRatio);
+                if (targetW < 1 || targetH < 1) return;
+                // Nothing to gain if it is already at (or below) print size.
+                if (!cover && targetW >= img.naturalWidth) return;
+
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = targetW;
+                    canvas.height = targetH;
+                    const ctx = canvas.getContext('2d');
+                    // JPEG has no alpha; paint white first so transparent PNGs
+                    // do not come out with black backgrounds.
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, targetW, targetH);
+                    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+
+                    const data = canvas.toDataURL('image/jpeg', quality);
+                    if (!data || data.length < 32) return;
+
+                    before += img.naturalWidth * img.naturalHeight;
+                    after += targetW * targetH;
+                    count++;
+
+                    img.src = data;
+                    // The crop is baked in now — let it fill the box exactly.
+                    if (cover) img.style.objectFit = 'fill';
+                    if (img.decode) await img.decode().catch(() => {});
+                } catch (e) { /* keep the original image */ }
+            }));
+
+            return { before, after, count };
+        }, PDF_PRINT_DPI_FACTOR, PDF_IMAGE_QUALITY);
+
+        if (stats && stats.count) {
+            console.log(`PDF: ${stats.count} image(s) downscaled, ` +
+                `${(stats.before / 1e6).toFixed(1)}MP -> ${(stats.after / 1e6).toFixed(1)}MP`);
+        }
+    } catch (e) {
+        console.warn('PDF image downscale skipped:', e.message);
+    }
+}
+
 async function renderPdf(bodyHtml, origin) {
     const browser = await getBrowser();
     const page = await browser.newPage();
     try {
+        // The site sits behind the password gate, so Chromium's requests for the
+        // proposal's images and style.css would come back 401 and the PDF would
+        // render as unstyled text with no photos. Two things are needed:
+        //
+        //  1. the same signed gate cookie the browser gets after login, and
+        //  2. a document that actually lives on `origin`. setContent() alone runs
+        //     on about:blank, which makes every asset request cross-site, so the
+        //     SameSite=Lax gate cookie is withheld and the responses come back
+        //     401 (Chromium then reports ERR_BLOCKED_BY_ORB). Navigating to a
+        //     cheap same-origin URL first fixes the document origin; setContent
+        //     afterwards keeps it.
+        try {
+            await page.setCookie({
+                name: gate.COOKIE_NAME,
+                value: gate.TOKEN,
+                url: origin,
+                path: '/'
+            });
+            await page.goto(origin + '/api/health', {
+                waitUntil: 'domcontentloaded',
+                timeout: 15000
+            });
+        } catch (e) {
+            // Not fatal: the PDF still renders, just without gated assets.
+            console.warn('PDF gate bypass failed, assets may be missing:', e.message);
+        }
+
         // Apply the @media print rules and render backgrounds/colors.
         await page.emulateMediaType('print');
         await page.setContent(buildDocument(bodyHtml, origin), {
             waitUntil: 'networkidle0',
             timeout: 30000
         });
+        await downscaleImages(page);
+
         const pdf = await page.pdf({
             format: 'A4',
             printBackground: true,

@@ -78,8 +78,13 @@ try {
     const syncRoutes = require('./routes/sync');
 
     // Initialize Gemini
+    // Model adlari: gemini-2.0-* surumleri emekli edildi ve 404 donuyordu.
+    // Guncel isimleri `GET /v1beta/models` listeler; degistirmeden once oradan dogrula.
+    const TEXT_MODEL = process.env.GEMINI_TEXT_MODEL || 'gemini-3.7-flash';
+    const IMAGE_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image';
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSy_PLACEHOLDER_KEY');
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: TEXT_MODEL });
 
     // Simple in-memory IP rate limiter for the public AI endpoints.
     // The current frontend has no auth flow (USE_API=false / localStorage), so these
@@ -123,7 +128,7 @@ try {
 
     // AI Image Generation
     const imageModel = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp-image-generation",
+        model: IMAGE_MODEL,
         generationConfig: {
             responseModalities: ["TEXT", "IMAGE"]
         }

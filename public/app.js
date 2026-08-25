@@ -309,9 +309,9 @@ function loadData() {
     const parsedCustomers = savedCustomers ? JSON.parse(savedCustomers) : [];
     if (parsedCustomers.length === 0) {
         state.customers = [
-            { id: 'c1', name: 'Ahmet YÄ±lmaz', phone: '0532 111 22 33', email: 'ahmet@mail.com', address: 'Urla, Ä°zmir', updatedAt: Date.now() },
-            { id: 'c2', name: 'AyÅŸe Demir', phone: '0533 444 55 66', email: 'ayse@deneme.com', address: 'Ã‡eÅŸme, Ä°zmir', updatedAt: Date.now() },
-            { id: 'c3', name: 'Global Ä°nÅŸaat A.Å.', phone: '0232 777 88 99', email: 'info@globalinsaat.com', address: 'BayraklÄ±, Ä°zmir', updatedAt: Date.now() }
+            { id: 'c1', name: 'Ahmet Yılmaz', phone: '0532 111 22 33', email: 'ahmet@mail.com', address: 'Urla, İzmir', updatedAt: Date.now() },
+            { id: 'c2', name: 'Ayşe Demir', phone: '0533 444 55 66', email: 'ayse@deneme.com', address: 'Çeşme, İzmir', updatedAt: Date.now() },
+            { id: 'c3', name: 'Global İnşaat A.Ş.', phone: '0232 777 88 99', email: 'info@globalinsaat.com', address: 'Bayraklı, İzmir', updatedAt: Date.now() }
         ];
         persistCustomers();
     } else {
@@ -1866,6 +1866,24 @@ function getConsonants(str, limit = 4) {
     return res.padEnd(limit, '_');
 }
 
+// Teklifteki musteri Musteriler listesinde yoksa olustur (ayni isim tekrar eklenmez).
+function ensureCustomerFromProposal(teklif) {
+    const name = (teklif.customerName || '').trim();
+    if (!name) return;
+    const key = name.toLowerCase();
+    if (state.customers.some(c => (c.name || '').toLowerCase().trim() === key)) return;
+    state.customers.push({
+        id: 'c' + Date.now(),
+        name: name,
+        phone: '',
+        email: '',
+        address: '',
+        updatedAt: Date.now()
+    });
+    persistCustomers();
+    updateCustomerDatalist();
+}
+
 window.saveCurrentProposal = function () {
     if (!state.customerName) return alert('Lütfen müşteri adını girin.');
 
@@ -1919,6 +1937,10 @@ window.saveCurrentProposal = function () {
 
     // Auto-update Kanban Project
     updateKanbanFromProposal(teklif);
+
+    // Musteri kartini da ac: teklif kaydedip Musteriler sekmesine bakinca
+    // musteri yoktu, bu yuzden telefon/e-posta hicbir yerde tutulmuyordu.
+    ensureCustomerFromProposal(teklif);
 
     // Önceki fiyat hafızasını güncelle (her hizmetin son birim fiyatı)
     recordPriceHistory();
@@ -2112,11 +2134,38 @@ window.deleteProposal = function (id) {
     renderSavedProposals();
 };
 
+// Teklif durumu <-> Kanban listesi eslesmesi. "Received" (teklif iletildi) bilerek
+// disarida: bir teklifin durumu ile ayni anlama gelmiyor, oraya suruklemek durumu bozmasin.
+const STATUS_TO_LIST = { 'Beklemede': 'list-open', 'Kabul': 'list-accepted', 'Red': 'list-declined' };
+const LIST_TO_STATUS = { 'list-open': 'Beklemede', 'list-accepted': 'Kabul', 'list-declined': 'Red' };
+
+// Bir teklifin durumu degisince, o teklifi tasiyan Kanban kartini dogru listeye tasi.
+function moveKanbanCardForProposal(proposal) {
+    const targetListId = STATUS_TO_LIST[proposal.status];
+    if (!targetListId) return false;
+
+    let moved = false;
+    state.kanban.forEach(list => {
+        const idx = list.cards.findIndex(c => c.proposals && c.proposals.includes(proposal.code));
+        if (idx === -1 || list.id === targetListId) return;
+        const target = state.kanban.find(l => l.id === targetListId);
+        if (!target) return;
+        const [card] = list.cards.splice(idx, 1);
+        card.updatedAt = Date.now();
+        target.cards.push(card);
+        moved = true;
+    });
+    if (moved) persistKanban();
+    return moved;
+}
+
 window.setProposalStatus = function (id, val) {
     const p = state.savedProposals.find(x => x.id === id);
     if (!p) return;
     p.status = val;
     localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+    // Kanban'i da guncelle, yoksa "Tekliflerim"de Kabul gorunurken kart Open'da kaliyordu.
+    moveKanbanCardForProposal(p);
     renderSavedProposals();
 };
 
@@ -2496,6 +2545,23 @@ window.dropCard = function (e) {
     card.updatedAt = Date.now();
     targetList.cards.push(card);
 
+    // Karti tasimak, o kartin tasidigi tekliflerin durumunu da degistirmeli;
+    // dashboard cirosu tekliflerin status alanindan hesaplaniyor.
+    const newStatus = LIST_TO_STATUS[targetList.id];
+    if (newStatus && card.proposals && card.proposals.length) {
+        let changed = false;
+        state.savedProposals.forEach(p => {
+            if (card.proposals.includes(p.code) && p.status !== newStatus) {
+                p.status = newStatus;
+                changed = true;
+            }
+        });
+        if (changed) {
+            localStorage.setItem(STORAGE_KEYS.SAVED_PROPOSALS, JSON.stringify(state.savedProposals));
+            renderSavedProposals();
+        }
+    }
+
     persistKanban();
     renderKanban();
 };
@@ -2503,7 +2569,7 @@ window.dropCard = function (e) {
 window.renameKanbanList = function (id) {
     const list = state.kanban.find(l => l.id === id);
     if (!list) return;
-    const newTitle = prompt('Liste Ä°smi:', list.title);
+    const newTitle = prompt('Liste İsmi:', list.title);
     if (newTitle && newTitle !== list.title) {
         list.title = newTitle;
         persistKanban();
@@ -2811,7 +2877,7 @@ function syncProposalsToKanban() {
 
                 entryList.cards.push({
                     id: 'k' + Date.now() + Math.random().toString(36).substr(2, 5),
-                    title: p.projectName || 'Ä°simsiz Proje',
+                    title: p.projectName || 'İsimsiz Proje',
                     customerName: p.customerName,
                     phone: cust.phone || '',
                     email: cust.email || '',
@@ -3166,7 +3232,7 @@ window.importProductsFromExcel = async function (inputEl) {
     if (!file) return;
 
     if (typeof XLSX === 'undefined') {
-        alert('Excel kÃ¼tÃ¼phanesi yÃ¼klenemedi. LÃ¼tfen sayfayÄ± yenileyin.');
+        alert('Excel kütüphanesi yüklenemedi. Lütfen sayfayı yenileyin.');
         return;
     }
 
