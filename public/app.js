@@ -29,6 +29,22 @@ let _lastSyncedCanon = null;
 // her silme kalan anahtarlarin indekslerini kaydiriyor. Bu yuzden cikista
 // `teklif_company` gibi kayitlar geride kaliyor, hesap degistiginde de onceki
 // kullanicinin verisi yenisinin ustunde duruyordu.
+// Görseli olmayan (veya dosyası henüz üretilmemiş) kalemler için yer tutucu.
+//
+// Eskiden varsayılan 'assets/jobs/lawn.png' idi: bir çim biçme fotoğrafı. Tek
+// işletmelik peyzaj döneminde mantıklıydı, çok sektörlü üründe değil — reklam
+// ajansının "Influencer Pazarlama" teklifinde müşteriye çim fotoğrafı gidiyordu.
+//
+// imgFallback() ayrıca dosyası OLMAYAN yolları da yakalar: image_url dolu ama
+// dosya diskte yoksa tarayıcı kırık görsel ikonu gösterirdi. Sektör paketleri
+// henüz üretilmemiş görsellere işaret ettiği için bu şart (bkz. GORSELLER.md);
+// görsel eklendiği anda hiçbir kod/JSON değişikliği gerekmeden devreye girer.
+const PLACEHOLDER_IMG = 'images/placeholder.svg';
+
+function imgFallback() {
+    return `onerror="this.onerror=null; this.src='${PLACEHOLDER_IMG}';"`;
+}
+
 function clearTeklifKeys() {
     const keys = [];
     for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
@@ -987,7 +1003,10 @@ window.saveService = function () {
 
     const file = els.srvImage.files[0];
     const finish = (img) => {
-        jobData.image = img || 'assets/jobs/lawn.png';
+        // Görsel seçilmediyse BOŞ bırakılır; çizim sırasında yer tutucu devreye
+        // girer. Eskiden buraya çim fotoğrafının yolu YAZILIYORDU, yani yanlış
+        // görsel kullanıcının verisine kalıcı olarak giriyordu.
+        jobData.image = img || '';
         if (id) {
             const idx = state.jobs.findIndex(j => j.id === id);
             if (idx > -1) {
@@ -1033,7 +1052,7 @@ function renderServiceList() {
         const div = document.createElement('div');
         div.className = 'service-item';
         div.innerHTML = `
-            <img src="${job.image || 'assets/jobs/j1.png'}" class="service-item-img">
+            <img src="${job.image || PLACEHOLDER_IMG}" class="service-item-img" ${imgFallback()}>
             <div class="service-item-body">
                 <div class="service-item-info">${job.name}</div>
                 <div class="service-item-sub">${job.price} ₺ / ${job.unit}</div>
@@ -1631,7 +1650,9 @@ window.saveReference = function () {
 
     const file = els.refImage.files[0];
     const finish = (img) => {
-        refData.image = img || 'assets/references/villa.png';
+        // Aynı sebeple boş bırakılıyor (üstelik villa.png diskte hiç yoktu:
+        // görselsiz her referans kırık görsel ikonu gösteriyordu).
+        refData.image = img || '';
         if (id) {
             const idx = state.references.findIndex(r => r.id === id);
             if (idx > -1) {
@@ -1668,7 +1689,7 @@ function renderReferenceList() {
         const div = document.createElement('div');
         div.className = 'service-item';
         div.innerHTML = `
-            <img src="${ref.image || 'assets/references/villa.png'}" class="service-item-img">
+            <img src="${ref.image || PLACEHOLDER_IMG}" class="service-item-img" ${imgFallback()}>
             <div class="service-item-body">
                 <div class="service-item-info">${ref.title}</div>
                 <div class="service-item-sub">${ref.category}</div>
@@ -2077,7 +2098,7 @@ function renderProposalItems() {
         const card = document.createElement('div');
         card.className = 'job-card';
         card.innerHTML = `
-            <img src="${item.image || 'assets/jobs/lawn.png'}" class="job-image" alt="${item.name}">
+            <img src="${item.image || PLACEHOLDER_IMG}" class="job-image" alt="${item.name}" ${imgFallback()}>
             <div class="job-details">
                 <div class="job-name">${item.name}</div>
                 <div class="job-desc">${item.description || ''}</div>
@@ -2578,7 +2599,7 @@ function renderReferencesGrid() {
     display.forEach(ref => {
         const d = document.createElement('div');
         d.className = 'ref-card';
-        d.innerHTML = `<img src="${ref.image || 'assets/references/villa.png'}"><div class="ref-title">${ref.title}</div><div class="ref-cat">${ref.category}</div>`;
+        d.innerHTML = `<img src="${ref.image || PLACEHOLDER_IMG}" ${imgFallback()}><div class="ref-title">${ref.title}</div><div class="ref-cat">${ref.category}</div>`;
         els.refGrid.appendChild(d);
     });
 }

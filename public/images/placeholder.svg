@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800" role="img" aria-label="Görsel eklenmedi">
+  <!--
+    Görseli olmayan hizmet/referans için nötr yer tutucu.
+
+    Neden vektör ve neden sade: bu görsel müşteriye giden teklifte de görünebilir.
+    Önceki varsayılan bir çim biçme fotoğrafıydı; peyzaj dışındaki her sektörde
+    (reklam ajansı, yazılım, tesisat...) yanlış ve kafa karıştırıcıydı. Buradaki
+    amaç "bu kaleme henüz görsel eklenmemiş" demek, sahte bir konu göstermek değil.
+
+    Kare (800x800) çünkü CSS object-fit: cover ile hem kare hizmet kutusuna hem
+    yatay referans kartına kırpılıyor; ikon ortada olduğu için her iki kırpmada da
+    görünür kalıyor.
+
+    Üzerine hangi görselin geleceği GORSELLER.md dosyasında listeleniyor.
+  -->
+  <defs>
+    <linearGradient id="zemin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f1f5f4"/>
+      <stop offset="100%" stop-color="#e2e8e6"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="800" fill="url(#zemin)"/>
+
+  <!-- ince çerçeve: kenarı belli olsun, kırık görsel sanılmasın -->
+  <rect x="18" y="18" width="764" height="764" rx="26"
+        fill="none" stroke="#cbd5d1" stroke-width="3" stroke-dasharray="14 12"/>
+
+  <!-- fotoğraf ikonu -->
+  <g transform="translate(400 400)" fill="none" stroke="#9aa8a3" stroke-width="14"
+     stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-150" y="-115" width="300" height="230" rx="22"/>
+    <circle cx="-72" cy="-42" r="26"/>
+    <path d="M-150 66 L-36 -32 L44 44 L92 4 L150 60"/>
+  </g>
+</svg>
