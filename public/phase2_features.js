@@ -239,41 +239,17 @@ document.addEventListener('DOMContentLoaded', () => {
     window.closeSignatureModal = closeSignatureModal;
     window.saveSignature = saveSignature;
     window.clearSignature = clearSignature;
-    window.showNotifications = showNotifications;
     window.generateAIImage = generateAIImage;
 
-    checkPendingProposals();
 });
 
 // --- SMART REMINDERS ---
-function checkPendingProposals() {
-    const proposals = JSON.parse(localStorage.getItem('proposals') || '[]');
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+// KALDIRILDI. Buradaki checkPendingProposals() ve showNotifications() ikilisi
+// localStorage'daki 'proposals' anahtarini okuyordu; bu uygulamada oyle bir
+// anahtar hic olmadi (gercek anahtar 'teklif_saved'). Yani liste her zaman
+// bos cikiyor, rozet hic gorunmuyor ve can her tiklamada "Yeni bildiriminiz
+// yok" diyordu — calisiyor gibi duran ama hicbir sey yapmayan bir sistem.
+//
+// Yerine app.js'teki showNotifications() gecti: gercek verilerle calisiyor ve
+// musterinin teklifi actigi/karar verdigi bilgisini de gosteriyor.
 
-    const oldPending = proposals.filter(p =>
-        (p.status === 'Bekleyen' || !p.status) &&
-        new Date(p.date) < sevenDaysAgo
-    );
-
-    const badge = document.getElementById('notificationBadge');
-    if (badge) {
-        if (oldPending.length > 0) {
-            badge.style.display = 'block';
-            badge.setAttribute('data-count', oldPending.length);
-        } else {
-            badge.style.display = 'none';
-        }
-    }
-}
-
-function showNotifications() {
-    const badge = document.getElementById('notificationBadge');
-    const count = badge.getAttribute('data-count');
-
-    if (count && count > 0) {
-        alert(count + " adet teklifiniz 7 günden uzun süredir 'Bekleyen' durumunda! Lütfen müşterilerinizi arayın.");
-    } else {
-        alert("Yeni bildiriminiz yok.");
-    }
-}

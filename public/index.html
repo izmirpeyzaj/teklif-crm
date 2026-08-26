@@ -274,14 +274,17 @@
                 <div class="top-search" style="flex:1; max-width:400px; position:relative;">
                     <i class="fa-solid fa-magnifying-glass"
                         style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:0.9rem;"></i>
-                    <input type="text" class="form-control" placeholder="Ara..."
+                    <input type="text" class="form-control" placeholder="Teklif, müşteri, hizmet ara…"
+                        oninput="aramaYap(this.value)" onfocus="aramaYap(this.value)"
+                        autocomplete="off"
                         style="padding-left:36px; height:40px; background:#f1f5f9; border:none;">
                 </div>
                 <div class="top-actions" style="display:flex; align-items:center; gap:20px;">
+                    <!-- Paylas ve yorum ikonlari kaldirildi: tiklaninca hicbir sey
+                         yapmiyorlardi. Calismayan buton, kullaniciya urunun bozuk
+                         oldugunu dusundurur. -->
                     <div style="display:flex; gap:16px; color:var(--text-muted); font-size:1.1rem;">
-                        <i class="fa-solid fa-share-nodes"></i>
-                        <i class="fa-regular fa-comment"></i>
-                        <div style="position:relative; cursor:pointer;" onclick="showNotifications()">
+                        <div style="position:relative; cursor:pointer;" onclick="showNotifications()" title="Bildirimler">
                             <i class="fa-regular fa-bell"></i>
                             <span id="notificationBadge"
                                 style="position:absolute; top:-2px; right:-2px; width:8px; height:8px; background:#ef4444; border-radius:50%; display:none;"></span>

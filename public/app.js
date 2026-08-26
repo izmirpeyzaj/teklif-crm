@@ -669,6 +669,232 @@ function onayDurumRozeti(l) {
 }
 
 // ====================================
+// GENEL ARAMA VE BILDIRIMLER
+// ====================================
+// Ust bardaki arama kutusu hicbir seye bagli degildi: kullanici yaziyor,
+// hicbir sey olmuyordu. Bildirim cani ise var olmayan bir fonksiyonu
+// (showNotifications) cagirdigi icin tiklaninca konsola hata atiyordu.
+// Calismayan bir buton, hic olmayan butondan kotudur: kullanici urunun
+// bozuk oldugunu dusunur.
+
+// Turkce arama icin kucultme: 'İ' -> 'i̇' donusumu yuzunden toLowerCase()
+// dogru calismiyor, toLocaleLowerCase('tr') sart. Ayrica kullanici 'Ş'
+// yerine 's' yazabilir; aksanlari da esitliyoruz.
+function aramaAnahtari(v) {
+    return String(v == null ? '' : v)
+        .toLocaleLowerCase('tr')
+        .replace(/ı/g, 'i').replace(/ş/g, 's').replace(/ğ/g, 'g')
+        .replace(/ü/g, 'u').replace(/ö/g, 'o').replace(/ç/g, 'c')
+        .trim();
+}
+
+function genelArama(sorgu) {
+    const q = aramaAnahtari(sorgu);
+    if (q.length < 2) return [];
+
+    const esler = (metin) => aramaAnahtari(metin).includes(q);
+    const sonuc = [];
+
+    (state.savedProposals || []).forEach(t => {
+        if (esler(t.code) || esler(t.customerName) || esler(t.projectName)) {
+            sonuc.push({
+                tur: 'Teklif', ikon: '📄',
+                baslik: t.code,
+                alt: [t.customerName, t.projectName].filter(Boolean).join(' · '),
+                sag: formatCurrency(t.total || 0),
+                git: () => { switchTab('proposals'); loadProposalById(t.id); }
+            });
+        }
+    });
+
+    (state.customers || []).forEach(m => {
+        if (esler(m.name) || esler(m.phone) || esler(m.email)) {
+            sonuc.push({
+                tur: 'Müşteri', ikon: '👤',
+                baslik: m.name,
+                alt: [m.phone, m.email].filter(Boolean).join(' · '),
+                sag: '',
+                git: () => { switchTab('customers'); }
+            });
+        }
+    });
+
+    (state.jobs || []).forEach(h => {
+        if (esler(h.name)) {
+            sonuc.push({
+                tur: 'Hizmet', ikon: '🔧',
+                baslik: h.name,
+                alt: h.description || '',
+                sag: formatCurrency(h.price || 0) + ' / ' + (h.unit || ''),
+                git: () => { switchTab('services'); }
+            });
+        }
+    });
+
+    (state.products || []).forEach(u => {
+        if (esler(u.name)) {
+            sonuc.push({
+                tur: 'Ürün', ikon: '📦',
+                baslik: u.name,
+                alt: u.description || '',
+                sag: formatCurrency(u.price || 0) + ' / ' + (u.unit || ''),
+                git: () => { switchTab('products'); }
+            });
+        }
+    });
+
+    return sonuc.slice(0, 20);
+}
+
+let _aramaSonuclari = [];
+
+function aramaKutusu() {
+    let k = document.getElementById('aramaSonuc');
+    if (!k) {
+        k = document.createElement('div');
+        k.id = 'aramaSonuc';
+        k.style.cssText = 'position:absolute; top:calc(100% + 6px); left:0; right:0; background:#fff; ' +
+            'border:1px solid var(--border-light); border-radius:10px; box-shadow:0 10px 30px rgba(15,23,42,.14); ' +
+            'max-height:60vh; overflow-y:auto; z-index:900; display:none;';
+        const sarmal = document.querySelector('.top-search');
+        if (sarmal) sarmal.appendChild(k);
+    }
+    return k;
+}
+
+window.aramaYap = (deger) => {
+    const k = aramaKutusu();
+    _aramaSonuclari = genelArama(deger);
+
+    if (!_aramaSonuclari.length) {
+        k.style.display = aramaAnahtari(deger).length >= 2 ? 'block' : 'none';
+        k.innerHTML = '<div style="padding:16px; text-align:center; color:var(--text-muted); font-size:.85rem;">Sonuç bulunamadı.</div>';
+        return;
+    }
+
+    k.style.display = 'block';
+    k.innerHTML = _aramaSonuclari.map((r, i) =>
+        '<div onclick="aramaSecildi(' + i + ')" style="display:flex; align-items:center; gap:11px; padding:10px 13px; ' +
+             'cursor:pointer; border-bottom:1px solid var(--border-light);" ' +
+             'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">' +
+            '<span style="font-size:1.05rem;">' + r.ikon + '</span>' +
+            '<div style="flex:1; min-width:0;">' +
+                '<div style="font-size:.87rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' +
+                    kacisliMetin(r.baslik) + '</div>' +
+                (r.alt ? '<div style="font-size:.76rem; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' +
+                    kacisliMetin(r.alt) + '</div>' : '') +
+            '</div>' +
+            '<div style="text-align:right; white-space:nowrap;">' +
+                '<div style="font-size:.7rem; color:var(--text-muted);">' + r.tur + '</div>' +
+                (r.sag ? '<div style="font-size:.8rem; font-weight:600;">' + kacisliMetin(r.sag) + '</div>' : '') +
+            '</div>' +
+        '</div>').join('');
+};
+
+window.aramaSecildi = (i) => {
+    const r = _aramaSonuclari[i];
+    aramaKapat();
+    const girdi = document.querySelector('.top-search input');
+    if (girdi) girdi.value = '';
+    if (r && r.git) r.git();
+};
+
+window.aramaKapat = () => {
+    const k = document.getElementById('aramaSonuc');
+    if (k) k.style.display = 'none';
+};
+
+// ------------------------------------------------------------------
+// Bildirimler
+// ------------------------------------------------------------------
+// Can ikonu var olmayan bir fonksiyonu cagiriyordu. Icerigi zaten elimizde:
+// cevap bekleyen teklifler ve musterinin acip karar verdigi baglantilar.
+
+function bildirimleriTopla() {
+    const now = Date.now();
+    const liste = [];
+
+    // Musteri karar vermis ama ekip henuz gormemis olabilir.
+    Object.values(_onayDurumlari || {}).forEach(l => {
+        if (l.decided_at) {
+            liste.push({
+                ikon: l.decision === 'accepted' ? '✅' : '❌',
+                baslik: (l.decision === 'accepted' ? 'Müşteri onayladı' : 'Müşteri reddetti') + ' · ' + l.proposal_code,
+                alt: (l.customer_name || '') + ' · ' + new Date(l.decided_at).toLocaleDateString('tr-TR'),
+                zaman: l.decided_at
+            });
+        } else if (l.opened_at) {
+            liste.push({
+                ikon: '👁',
+                baslik: 'Teklif görüntülendi · ' + l.proposal_code,
+                alt: (l.customer_name || '') + ' · ' + new Date(l.opened_at).toLocaleDateString('tr-TR'),
+                zaman: l.opened_at
+            });
+        }
+    });
+
+    // Uzun suredir cevapsiz teklifler.
+    (state.savedProposals || []).forEach(t => {
+        if (durumListesi(t.status) === 'list-accepted' || durumListesi(t.status) === 'list-declined') return;
+        const ts = t.createdAt || new Date(t.date || now).getTime();
+        const gun = Math.floor((now - ts) / 86400000);
+        if (gun >= 3) {
+            liste.push({
+                ikon: '⏳',
+                baslik: gun + ' gündür cevap bekliyor · ' + t.code,
+                alt: [t.customerName, t.projectName].filter(Boolean).join(' · '),
+                zaman: ts
+            });
+        }
+    });
+
+    return liste.sort((a, b) => b.zaman - a.zaman).slice(0, 15);
+}
+
+window.showNotifications = () => {
+    const liste = bildirimleriTopla();
+
+    let k = document.getElementById('bildirimKutusu');
+    if (k) { k.remove(); return; }        // ikinci tikla kapansin
+
+    k = document.createElement('div');
+    k.id = 'bildirimKutusu';
+    k.style.cssText = 'position:absolute; top:calc(100% + 10px); right:0; width:min(360px, 92vw); background:#fff; ' +
+        'border:1px solid var(--border-light); border-radius:11px; box-shadow:0 12px 34px rgba(15,23,42,.16); ' +
+        'z-index:950; overflow:hidden;';
+
+    k.innerHTML =
+        '<div style="padding:13px 15px; border-bottom:1px solid var(--border-light); font-weight:600; font-size:.9rem;">Bildirimler</div>' +
+        (liste.length
+            ? '<div style="max-height:60vh; overflow-y:auto;">' + liste.map(b =>
+                '<div style="display:flex; gap:10px; padding:11px 15px; border-bottom:1px solid var(--border-light);">' +
+                    '<span>' + b.ikon + '</span>' +
+                    '<div style="min-width:0;">' +
+                        '<div style="font-size:.84rem; font-weight:600;">' + kacisliMetin(b.baslik) + '</div>' +
+                        '<div style="font-size:.75rem; color:var(--text-muted);">' + kacisliMetin(b.alt) + '</div>' +
+                    '</div>' +
+                '</div>').join('') + '</div>'
+            : '<div style="padding:22px 15px; text-align:center; color:#16a34a; font-size:.86rem;">Bekleyen bir şey yok.</div>');
+
+    const sarmal = document.querySelector('.top-actions');
+    if (sarmal) { sarmal.style.position = 'relative'; sarmal.appendChild(k); }
+};
+
+// Rozet: bakilmasi gereken bir sey varsa canin ustunde kirmizi nokta.
+function bildirimRozetiTazele() {
+    const rozet = document.getElementById('notificationBadge');
+    if (!rozet) return;
+    rozet.style.display = bildirimleriTopla().length ? 'block' : 'none';
+}
+
+// Disariya tiklayinca arama ve bildirim kutulari kapansin.
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.top-search')) window.aramaKapat();
+    const b = document.getElementById('bildirimKutusu');
+    if (b && !e.target.closest('#bildirimKutusu') && !e.target.closest('.top-actions')) b.remove();
+});
+
+// ====================================
 // UYGULAMA SIFRESI REHBERI
 // ====================================
 // Kendi e-posta hesabindan gonderim ozelliginin tek gercek engeli bu adim:
@@ -5178,6 +5404,7 @@ function renderDashboard() {
     renderFollowUps();
     renderKarlilik();
     renderTahsilat();
+    bildirimRozetiTazele();
 }
 
 // Telefonu WhatsApp formatına çevir (90XXXXXXXXXX)
