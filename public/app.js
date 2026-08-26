@@ -669,6 +669,241 @@ function onayDurumRozeti(l) {
 }
 
 // ====================================
+// UYGULAMA SIFRESI REHBERI
+// ====================================
+// Kendi e-posta hesabindan gonderim ozelliginin tek gercek engeli bu adim:
+// Gmail, Yandex ve Yahoo normal hesap sifresini kabul etmiyor; ayri bir
+// "uygulama sifresi" uretmek gerekiyor. Bunu tarif etmezsek kullanici ilk
+// denemede "sifre kabul edilmedi" hatasini alip vazgecer.
+//
+// Adimlari saglayiciya gore degistiriyoruz ve her adimda dogrudan acilacak
+// baglantiyi veriyoruz — "Google hesap ayarlarina gidin" demek yerine.
+
+const SIFRE_REHBERI = {
+    gmail: {
+        baslik: 'Gmail / Google Workspace için uygulama şifresi',
+        girisNotu: 'Google, Ağustos 2022\'den beri e-posta programlarında normal hesap şifrenizi ' +
+                   'kabul etmiyor. Bunun yerine yalnızca bu uygulamaya özel, 16 haneli bir şifre üretiyorsunuz. ' +
+                   'Hesap şifreniz bizde görünmez ve bu şifreyi istediğiniz an iptal edebilirsiniz.',
+        adimlar: [
+            {
+                baslik: 'İki adımlı doğrulamayı açın',
+                metin: 'Uygulama şifresi üretebilmek için önce bu ayarın açık olması gerekiyor. ' +
+                       'Zaten açıksa bu adımı geçin.',
+                link: 'https://myaccount.google.com/signinoptions/two-step-verification',
+                linkYazi: 'İki adımlı doğrulama sayfasını aç'
+            },
+            {
+                baslik: 'Uygulama şifreleri sayfasını açın',
+                metin: 'Sayfa "Uygulama şifreleri" başlığıyla açılır. Eğer "bu ayar kullanılamıyor" ' +
+                       'diyorsa iki adımlı doğrulama henüz açılmamış demektir; önceki adıma dönün.',
+                link: 'https://myaccount.google.com/apppasswords',
+                linkYazi: 'Uygulama şifreleri sayfasını aç'
+            },
+            {
+                baslik: 'Bir isim yazıp oluşturun',
+                metin: 'Uygulama adı olarak <strong>Teklif</strong> yazıp "Oluştur" deyin. ' +
+                       'Google size <strong>16 harfli</strong> bir şifre verir (örn. <code>abcd efgh ijkl mnop</code>).'
+            },
+            {
+                baslik: 'Buraya yapıştırın',
+                metin: 'O 16 harfi yukarıdaki <strong>Şifre</strong> kutusuna yapıştırın. ' +
+                       'Boşlukları silmenize gerek yok. Google bu şifreyi bir daha göstermez, ' +
+                       'ama kaybederseniz yenisini üretebilirsiniz.'
+            }
+        ],
+        sorun: [
+            ['"Uygulama şifreleri" seçeneğini göremiyorum',
+             'İki adımlı doğrulama kapalıdır. İlk adımdaki bağlantıdan açın; bazen açtıktan sonra ' +
+             'birkaç dakika beklemek gerekir.'],
+            ['Şirket hesabı (Workspace) kullanıyorum ve sayfa açılmıyor',
+             'Yöneticiniz bu özelliği kapatmış olabilir. BT sorumlunuzdan "SMTP / daha az güvenli ' +
+             'uygulama erişimi"ni açmasını isteyin.']
+        ]
+    },
+
+    yandex: {
+        baslik: 'Yandex Mail için uygulama parolası',
+        girisNotu: 'Yandex de e-posta programlarında hesap parolanızı kabul etmiyor; ayrı bir ' +
+                   'uygulama parolası üretmeniz gerekiyor.',
+        adimlar: [
+            {
+                baslik: 'Güvenlik sayfasını açın',
+                metin: 'Yandex hesabınızın güvenlik ayarlarına gidin.',
+                link: 'https://id.yandex.com/security/app-passwords',
+                linkYazi: 'Uygulama parolaları sayfasını aç'
+            },
+            {
+                baslik: '"E-posta" türünü seçin',
+                metin: 'Açılan listeden <strong>E-posta</strong> (Mail) seçeneğini işaretleyin. ' +
+                       'Diğer türler IMAP/SMTP erişimi vermez.'
+            },
+            {
+                baslik: 'İsim verip oluşturun',
+                metin: '<strong>Teklif</strong> yazıp oluşturun; Yandex size bir parola gösterir.'
+            },
+            {
+                baslik: 'Buraya yapıştırın',
+                metin: 'Parolayı yukarıdaki <strong>Şifre</strong> kutusuna yapıştırın.'
+            }
+        ],
+        sorun: [
+            ['IMAP kapalı diyor',
+             'Yandex Mail ayarlarından "E-posta istemcileri" bölümünde IMAP protokolünü açmanız gerekir.']
+        ]
+    },
+
+    outlook: {
+        baslik: 'Outlook / Microsoft 365',
+        girisNotu: 'Kişisel Outlook.com hesaplarında genelde normal şifreniz çalışır. ' +
+                   'İki adımlı doğrulama açıksa uygulama şifresi gerekir.',
+        adimlar: [
+            {
+                baslik: 'Önce normal şifrenizi deneyin',
+                metin: 'Çoğu kişisel hesapta ek bir şey yapmanıza gerek yok. ' +
+                       '"Test et ve kaydet" deyip sonucu görün.'
+            },
+            {
+                baslik: 'Kabul edilmezse uygulama şifresi üretin',
+                metin: 'Microsoft hesabınızın güvenlik sayfasından "Gelişmiş güvenlik seçenekleri" ' +
+                       'altında uygulama parolası oluşturun.',
+                link: 'https://account.microsoft.com/security',
+                linkYazi: 'Microsoft güvenlik sayfasını aç'
+            }
+        ],
+        sorun: [
+            ['Şirket hesabı (Microsoft 365) ve hata alıyorum',
+             'Microsoft, kurumsal hesaplarda SMTP erişimini varsayılan olarak kapatıyor. ' +
+             'BT sorumlunuzdan hesabınız için "Authenticated SMTP" özelliğini açmasını isteyin.']
+        ]
+    },
+
+    yahoo: {
+        baslik: 'Yahoo Mail için uygulama şifresi',
+        girisNotu: 'Yahoo, e-posta programlarında hesap şifrenizi kabul etmiyor.',
+        adimlar: [
+            {
+                baslik: 'Hesap güvenliği sayfasını açın',
+                metin: 'Yahoo hesabınızın güvenlik ayarlarına gidin.',
+                link: 'https://login.yahoo.com/account/security',
+                linkYazi: 'Yahoo güvenlik sayfasını aç'
+            },
+            {
+                baslik: '"Uygulama şifresi oluştur" deyin',
+                metin: 'Sayfanın altındaki "Generate app password" / "Uygulama şifresi oluştur" ' +
+                       'bağlantısına tıklayın.'
+            },
+            {
+                baslik: 'İsim verip oluşturun ve yapıştırın',
+                metin: '<strong>Teklif</strong> yazıp oluşturun, çıkan şifreyi yukarıdaki kutuya yapıştırın.'
+            }
+        ],
+        sorun: []
+    },
+
+    diger: {
+        baslik: 'Diğer e-posta sağlayıcıları',
+        girisNotu: 'Sunucu bilgilerini sağlayıcınızın destek sayfasından ya da BT sorumlunuzdan alabilirsiniz. ' +
+                   'Genelde ihtiyacınız olan dört şey vardır.',
+        adimlar: [
+            {
+                baslik: 'SMTP sunucu adresi',
+                metin: 'Genelde <code>mail.firmaniz.com</code> ya da <code>smtp.firmaniz.com</code> şeklindedir.'
+            },
+            {
+                baslik: 'Port ve şifreleme',
+                metin: 'En yaygın ikili: <strong>587</strong> (SSL kapalı) veya <strong>465</strong> (SSL açık). ' +
+                       'Biri olmazsa diğerini deneyin.'
+            },
+            {
+                baslik: 'Kullanıcı adı',
+                metin: 'Genelde e-posta adresinizin tamamıdır.'
+            },
+            {
+                baslik: 'Şifre',
+                metin: 'Çoğu sağlayıcıda e-posta hesabınızın şifresi. Bazıları ayrı bir uygulama şifresi ister.'
+            }
+        ],
+        sorun: []
+    }
+};
+
+window.sifreRehberiAc = () => {
+    const sec = document.getElementById('smtpSaglayici');
+    const anahtar = (sec && sec.value) || 'gmail';
+    const r = SIFRE_REHBERI[anahtar] || SIFRE_REHBERI.diger;
+
+    const adimlar = r.adimlar.map((a, i) =>
+        '<div style="display:flex; gap:14px; margin-bottom:18px;">' +
+            '<div style="flex:0 0 30px; height:30px; border-radius:50%; background:var(--accent); color:#fff; ' +
+                 'display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.88rem;">' +
+                 (i + 1) + '</div>' +
+            '<div style="flex:1; min-width:0;">' +
+                '<div style="font-weight:600; font-size:.92rem; margin-bottom:4px;">' + a.baslik + '</div>' +
+                '<div style="font-size:.86rem; color:var(--text-muted); line-height:1.55;">' + a.metin + '</div>' +
+                (a.link
+                    ? '<a href="' + a.link + '" target="_blank" rel="noopener noreferrer" ' +
+                      'style="display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:7px 13px; ' +
+                      'background:#eef2ff; color:#4338ca; border-radius:7px; text-decoration:none; font-size:.83rem; font-weight:600;">' +
+                      a.linkYazi + ' <span style="font-size:.9em;">↗</span></a>'
+                    : '') +
+            '</div>' +
+        '</div>').join('');
+
+    const sorunlar = (r.sorun || []).length
+        ? '<div style="border-top:1px solid var(--border); margin-top:6px; padding-top:16px;">' +
+              '<div style="font-weight:600; font-size:.9rem; margin-bottom:10px;">Takılırsanız</div>' +
+              r.sorun.map(([soru, cevap]) =>
+                  '<div style="margin-bottom:12px;">' +
+                      '<div style="font-size:.85rem; font-weight:600; color:#b45309;">' + soru + '</div>' +
+                      '<div style="font-size:.84rem; color:var(--text-muted); line-height:1.55; margin-top:3px;">' + cevap + '</div>' +
+                  '</div>').join('') +
+          '</div>'
+        : '';
+
+    let kutu = document.getElementById('sifreRehberi');
+    if (!kutu) {
+        kutu = document.createElement('div');
+        kutu.id = 'sifreRehberi';
+        document.body.appendChild(kutu);
+        // Disariya tiklayinca kapansin.
+        kutu.addEventListener('click', (e) => { if (e.target === kutu) window.sifreRehberiKapat(); });
+    }
+
+    kutu.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:3000; ' +
+        'display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;';
+    kutu.innerHTML =
+        '<div style="background:#fff; border-radius:14px; max-width:560px; width:100%; max-height:88vh; ' +
+             'overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+            '<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; ' +
+                 'padding:20px 22px 14px; border-bottom:1px solid var(--border); position:sticky; top:0; background:#fff;">' +
+                '<h2 style="margin:0; font-size:1.05rem; color:var(--primary);">' + r.baslik + '</h2>' +
+                '<button onclick="sifreRehberiKapat()" aria-label="Kapat" ' +
+                        'style="border:none; background:none; font-size:1.6rem; line-height:1; cursor:pointer; color:#94a3b8;">&times;</button>' +
+            '</div>' +
+            '<div style="padding:18px 22px 22px;">' +
+                '<p style="font-size:.86rem; color:var(--text-muted); line-height:1.6; margin:0 0 20px;">' + r.girisNotu + '</p>' +
+                adimlar +
+                sorunlar +
+                '<button class="btn btn-primary" style="width:100%; margin-top:8px;" onclick="sifreRehberiKapat()">Anladım, devam edeyim</button>' +
+            '</div>' +
+        '</div>';
+
+    document.body.style.overflow = 'hidden';   // arkadaki sayfa kaymasin
+};
+
+window.sifreRehberiKapat = () => {
+    const kutu = document.getElementById('sifreRehberi');
+    if (kutu) kutu.remove();
+    document.body.style.overflow = '';
+};
+
+// Esc ile kapansin — modal acikken kullanicinin ilk refleksi budur.
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.getElementById('sifreRehberi')) window.sifreRehberiKapat();
+});
+
+// ====================================
 // KENDI E-POSTA HESABINDAN GONDERIM
 // ====================================
 // Varsayilan gonderimde zarfin adresi platformun dogrulanmis adresi; musteri
@@ -748,7 +983,13 @@ window.smtpFormGoster = () => {
         '</div>' +
         '<div class="form-group"><label>E-posta adresiniz</label>' +
             '<input type="email" id="smtpUser" class="form-control" placeholder="siz@firmaniz.com" autocomplete="username"></div>' +
-        '<div class="form-group"><label>Şifre / uygulama şifresi</label>' +
+        '<div class="form-group">' +
+            '<label style="display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">' +
+                '<span>Şifre / uygulama şifresi</span>' +
+                '<a href="#" onclick="sifreRehberiAc(); return false;" ' +
+                   'style="font-weight:600; font-size:.8rem; color:var(--accent); text-decoration:none;">' +
+                   'Nasıl alınır? →</a>' +
+            '</label>' +
             '<input type="password" id="smtpPass" class="form-control" placeholder="••••••••" autocomplete="new-password">' +
             '<small style="color:var(--text-muted); font-size:.76rem;">Şifreniz şifrelenerek saklanır ve ekranda bir daha gösterilmez.</small></div>' +
         '<div style="display:flex; gap:10px;">' +
@@ -778,7 +1019,11 @@ window.smtpSaglayiciSecildi = () => {
         document.getElementById('smtpPort').value = p.port;
         document.getElementById('smtpSecure').checked = p.secure;
     }
-    document.getElementById('smtpNot').textContent = p.not || '';
+    // Not bos olsa bile rehber baglantisi dursun: kullanicinin ilk takildigi
+    // yer burasi, ikinci bir cikis yolu gostermek ucuz.
+    const notEl = document.getElementById('smtpNot');
+    notEl.innerHTML = (p.not ? kacisliMetin(p.not) + ' ' : '') +
+        '<a href="#" onclick="sifreRehberiAc(); return false;" style="color:var(--accent); font-weight:600; white-space:nowrap;">Adım adım anlat →</a>';
 };
 
 window.smtpKaydet = async (btn) => {

@@ -221,5 +221,12 @@ app.use((req, res) => {
     if (VARLIK_UZANTISI.test(req.path)) {
         return res.status(404).type('text/plain').send('Bulunamadi');
     }
+    // Bilinmeyen /api/ yolu da uygulamayi dondurmemeli. Aksi halde yanlis
+    // yazilmis ya da yanlis YONTEMLE (GET yerine POST gibi) cagrilan bir uc
+    // 200 + 72KB HTML donuyordu; istemci tarafinda bu "uc calisiyor" gibi
+    // gorunup hatayi gizliyor.
+    if (req.path.startsWith('/api/')) {
+        return res.status(404).json({ message: 'Böyle bir uç yok.', path: req.path, method: req.method });
+    }
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
