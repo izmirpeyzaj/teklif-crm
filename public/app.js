@@ -62,7 +62,8 @@ const ORG_KEYS = {
     teklif_products: 'products',
     teklif_refs: 'refs',
     teklif_kanban: 'kanban',
-    teklif_price_history: 'price_history'
+    teklif_price_history: 'price_history',
+    teklif_templates: 'templates'
 };
 
 let _versions = {};          // anahtar -> sunucudaki surum
@@ -667,6 +668,173 @@ function onayDurumRozeti(l) {
     }
     return '<span style="font-size:.7rem; padding:2px 8px; border-radius:10px; background:#f1f5f9; color:#64748b; white-space:nowrap;">🔗 Link gönderildi</span>';
 }
+
+// ====================================
+// TEKLIF SABLONLARI
+// ====================================
+// Ayni isi tekrar tekrar veren isletmelerde her teklifte ayni 8-10 kalem
+// yeniden tek tek seciliyor. Sablon, o kalemleri (adet ve o anki fiyatlariyla)
+// bir kere kaydedip tek tikla geri getiriyor.
+//
+// Onemli tercih: sablon FIYATI DEGIL, KALEMI hatirliyor. Kaydedilen fiyat
+// yalnizca bilgi amacli tutuluyor; uygulanirken GUNCEL fiyat listesinden
+// okunuyor. Aksi halde zam yapildiktan sonra sablon kullanan herkes eski
+// fiyattan teklif verir ve bunu fark etmez.
+
+const SABLON_ANAHTAR = 'teklif_templates';
+
+function sablonlariOku() {
+    try { return JSON.parse(localStorage.getItem(SABLON_ANAHTAR) || '[]'); }
+    catch (e) { return []; }
+}
+
+function sablonlariYaz(liste) {
+    const metin = JSON.stringify(liste);
+    localStorage.setItem(SABLON_ANAHTAR, metin);
+    zamanlaKaydet('templates', () => keyKaydet('templates', metin));
+}
+
+window.sablonKaydet = () => {
+    if (!state.cart.length && !state.productCart.length) {
+        alert('Şablon oluşturmak için önce hizmet veya ürün ekleyin.');
+        return;
+    }
+
+    const varsayilan = state.projectName || '';
+    const ad = prompt('Şablona bir isim verin:\n\n(örn. "Standart daire tadilatı", "Villa bahçe bakımı")', varsayilan);
+    if (ad === null) return;
+    if (!ad.trim()) { alert('Şablon adı boş olamaz.'); return; }
+
+    const liste = sablonlariOku();
+    const mevcut = liste.find(x => x.ad.toLocaleLowerCase('tr') === ad.trim().toLocaleLowerCase('tr'));
+    if (mevcut && !confirm('"' + ad.trim() + '" adında bir şablon zaten var.\n\nÜzerine yazılsın mı?')) return;
+
+    const kayit = {
+        id: mevcut ? mevcut.id : ('s' + Date.now()),
+        ad: ad.trim(),
+        guncellendi: Date.now(),
+        // Yalnizca kimlik ve adet; fiyat uygulanirken guncel listeden okunuyor.
+        hizmetler: state.cart.map(i => ({ id: i.id, ad: i.name, qty: i.qty })),
+        urunler: state.productCart.map(i => ({ id: i.id, ad: i.name, qty: i.qty })),
+        notlar: state.notes || '',
+        kosullar: state.conditions || ''
+    };
+
+    const yeni = mevcut ? liste.map(x => (x.id === mevcut.id ? kayit : x)) : liste.concat([kayit]);
+    sablonlariYaz(yeni);
+    alert('✓ "' + kayit.ad + '" şablon olarak kaydedildi.');
+};
+
+window.sablonAc = () => {
+    const liste = sablonlariOku().sort((a, b) => b.guncellendi - a.guncellendi);
+
+    let kutu = document.getElementById('sablonModal');
+    if (!kutu) {
+        kutu = document.createElement('div');
+        kutu.id = 'sablonModal';
+        document.body.appendChild(kutu);
+        kutu.addEventListener('click', (e) => { if (e.target === kutu) window.sablonKapat(); });
+    }
+
+    const satirlar = liste.length
+        ? liste.map(sb => {
+            const adet = (sb.hizmetler || []).length + (sb.urunler || []).length;
+            return '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px; ' +
+                        'padding:12px 4px; border-bottom:1px solid var(--border);">' +
+                    '<div style="min-width:0; flex:1;">' +
+                        '<div style="font-weight:600; font-size:.92rem;">' + kacisliMetin(sb.ad) + '</div>' +
+                        '<div style="font-size:.78rem; color:var(--text-muted);">' + adet + ' kalem · ' +
+                            new Date(sb.guncellendi).toLocaleDateString('tr-TR') + '</div>' +
+                    '</div>' +
+                    '<div style="display:flex; gap:6px; white-space:nowrap;">' +
+                        '<button class="btn btn-primary" style="padding:6px 12px; font-size:.8rem;" ' +
+                                'onclick="sablonUygula(\'' + sb.id + '\')">Uygula</button>' +
+                        '<button class="btn btn-secondary" style="padding:6px 10px; font-size:.8rem; ' +
+                                'border-color:#dc2626; color:#dc2626;" onclick="sablonSil(\'' + sb.id + '\')">Sil</button>' +
+                    '</div>' +
+                '</div>';
+        }).join('')
+        : '<p class="hint" style="text-align:center; padding:24px 10px;">Henüz şablon yok.<br>' +
+          'Sık verdiğiniz bir teklifi hazırlayıp <strong>Şablon olarak kaydet</strong> deyin.</p>';
+
+    kutu.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:3000; ' +
+        'display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;';
+    kutu.innerHTML =
+        '<div style="background:#fff; border-radius:14px; max-width:520px; width:100%; max-height:88vh; ' +
+             'overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; ' +
+                 'padding:18px 22px 14px; border-bottom:1px solid var(--border);">' +
+                '<h2 style="margin:0; font-size:1.05rem; color:var(--primary);">Teklif Şablonları</h2>' +
+                '<button onclick="sablonKapat()" style="border:none; background:none; font-size:1.6rem; ' +
+                        'line-height:1; cursor:pointer; color:#94a3b8;">&times;</button>' +
+            '</div>' +
+            '<div style="padding:8px 22px 20px;">' + satirlar +
+                '<p class="hint" style="margin-top:14px; font-size:.78rem;">Şablon uygulandığında kalemler ' +
+                    '<strong>güncel fiyat listenizden</strong> gelir; şablonu kaydettiğiniz günkü fiyatlar değil.</p>' +
+            '</div>' +
+        '</div>';
+
+    document.body.style.overflow = 'hidden';
+};
+
+window.sablonKapat = () => {
+    const k = document.getElementById('sablonModal');
+    if (k) k.remove();
+    document.body.style.overflow = '';
+};
+
+window.sablonSil = (id) => {
+    const liste = sablonlariOku();
+    const sb = liste.find(x => x.id === id);
+    if (!sb) return;
+    if (!confirm('"' + sb.ad + '" şablonu silinsin mi?')) return;
+    sablonlariYaz(liste.filter(x => x.id !== id));
+    sablonAc();
+};
+
+window.sablonUygula = (id) => {
+    const sb = sablonlariOku().find(x => x.id === id);
+    if (!sb) return;
+
+    if ((state.cart.length || state.productCart.length) &&
+        !confirm('Sepetinizdeki mevcut kalemler değiştirilecek.\n\nDevam edilsin mi?')) return;
+
+    const eksikler = [];
+
+    // Kalemler GUNCEL fiyat listesinden kuruluyor. Silinmis bir hizmet varsa
+    // sessizce atlamak yerine kullaniciya soyluyoruz; aksi halde teklif eksik
+    // gider ve kimse fark etmez.
+    state.cart = (sb.hizmetler || []).map(k => {
+        const h = (state.jobs || []).find(j => String(j.id) === String(k.id));
+        if (!h) { eksikler.push(k.ad); return null; }
+        return Object.assign({}, h, { qty: k.qty || 1 });
+    }).filter(Boolean);
+
+    state.productCart = (sb.urunler || []).map(k => {
+        const u = (state.products || []).find(x => String(x.id) === String(k.id));
+        if (!u) { eksikler.push(k.ad); return null; }
+        return Object.assign({}, u, { qty: k.qty || 1 });
+    }).filter(Boolean);
+
+    if (sb.notlar) state.notes = sb.notlar;
+    if (sb.kosullar) state.conditions = sb.kosullar;
+
+    renderCart();
+    renderProductCart();
+    renderProposalItems();
+    renderProductItems();
+    updateGrandTotal();
+    const nots = document.getElementById('proposalNotes');
+    if (nots && sb.notlar) nots.value = sb.notlar;
+
+    sablonKapat();
+    switchTab('proposal');
+
+    if (eksikler.length) {
+        alert('Şablon uygulandı, ancak şu kalemler artık listenizde yok ve eklenemedi:\n\n• ' +
+              eksikler.join('\n• '));
+    }
+};
 
 // ====================================
 // TOPLU FIYAT GUNCELLEME

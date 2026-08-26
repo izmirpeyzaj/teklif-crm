@@ -53,7 +53,9 @@ function maliyetiGizle(t) {
 
 router.use(requireOrg);
 
-const IZINLI_ANAHTAR = new Set(['company', 'services', 'products', 'refs', 'kanban', 'price_history']);
+// 'templates': sik verilen hizmet paketleri. Seyrek degisiyor, surumlu
+// anahtar olarak tutulmasi yeterli — ayri tablo gerekmiyor.
+const IZINLI_ANAHTAR = new Set(['company', 'services', 'products', 'refs', 'kanban', 'price_history', 'templates']);
 const MAX_BYTES = 6 * 1024 * 1024;
 
 // ---------------------------------------------------------------------------

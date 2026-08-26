@@ -417,7 +417,8 @@ const ORG_DATA_KEYS = {
     teklif_products: 'products',
     teklif_refs: 'refs',
     teklif_kanban: 'kanban',
-    teklif_price_history: 'price_history'
+    teklif_price_history: 'price_history',
+    teklif_templates: 'templates'
 };
 
 function migrateBlobToOrg(userId, orgId) {
