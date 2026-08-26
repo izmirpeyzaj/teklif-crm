@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>crm.izmirev.online | Profesyonel Teklif Hazırlama</title>
+    <title>Teklif CRM | Profesyonel Teklif Hazırlama</title>
     <link rel="stylesheet" href="style.css">
     <!-- Font Awesome for modern icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -211,11 +211,16 @@
     </div>
 
     <div class="app-shell">
+        <!-- Cekmece acikken arkadaki icerigi kapatan perde -->
+        <div class="mobil-perde" onclick="menuAcKapa(false)"></div>
+
         <!-- SIDEBAR -->
         <aside class="sidebar">
             <div class="sidebar-logo">
                 <i class="fa-solid fa-cloud-bolt" style="color:var(--accent); font-size:1.8rem;"></i>
-                <span>crm.izmirev.online</span>
+                <!-- Icerigi renderUserHeader() dolduruyor: cok kullanicili urunde
+                     burada kullanicinin KENDI firma adi yazmali. -->
+                <span id="markaAdi">Teklif CRM</span>
             </div>
 
             <nav class="sidebar-nav">
@@ -262,6 +267,10 @@
         <main class="main-content">
             <!-- TOP BAR -->
             <header class="top-bar">
+                <!-- Telefonda kenar cubugu cekmeceye donusuyor; bu buton onu aciyor. -->
+                <button class="mobil-menu-btn" onclick="menuAcKapa()" aria-label="Menü">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
                 <div class="top-search" style="flex:1; max-width:400px; position:relative;">
                     <i class="fa-solid fa-magnifying-glass"
                         style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted); font-size:0.9rem;"></i>
@@ -281,13 +290,16 @@
                     <div id="userProfile"
                         style="display:flex; align-items:center; gap:10px; padding-left:20px; border-left:1px solid var(--border-light);">
                         <div style="text-align:right;">
-                            <div id="userEmail" style="font-weight:700; font-size:0.9rem; color:var(--primary)">
-                                Kullanıcı</div>
-                            <div style="font-size:0.75rem; color:var(--text-muted)">Yönetici</div>
+                            <!-- DIKKAT: burada da id="userEmail" vardi. Sayfada ayni id iki
+                                 kez bulundugu icin getElementById hep ustteki seridi buluyor,
+                                 burasi hicbir zaman doldurulmuyordu; o yuzden sabit "Kullanici"
+                                 yazisi goruluyordu. Ad benzersiz olmali. -->
+                            <div id="ustBarKullanici" style="font-weight:700; font-size:0.9rem; color:var(--primary)">
+                                &nbsp;</div>
+                            <div id="userRol" style="font-size:0.75rem; color:var(--text-muted)">&nbsp;</div>
                         </div>
-                        <div
+                        <div id="userAvatar"
                             style="width:40px; height:40px; border-radius:10px; background:var(--accent); color:white; display:flex; align-items:center; justify-content:center; font-weight:700;">
-                            U
                         </div>
                     </div>
                 </div>
@@ -910,6 +922,17 @@
                             <p class="hint" style="margin-bottom:14px;">Çalışma arkadaşlarınızı davet edin; aynı
                                 müşteriler, teklifler ve panolar üzerinde birlikte çalışın.</p>
                             <div id="ekipAlani">
+                                <p class="hint">Yükleniyor…</p>
+                            </div>
+                        </div>
+
+                        <div class="management-container" style="margin-top:20px;">
+                            <h3>E-posta Gönderimi</h3>
+                            <p class="hint" style="margin-bottom:14px;">Teklifleriniz varsayılan olarak sistem
+                                adresimizden gönderilir; müşteri sizin firma adınızı görür ve yanıtlarsa size ulaşır.
+                                Kendi e-posta hesabınızı tanımlarsanız teklif <strong>doğrudan sizin adresinizden</strong>
+                                gider.</p>
+                            <div id="smtpAlani">
                                 <p class="hint">Yükleniyor…</p>
                             </div>
                         </div>

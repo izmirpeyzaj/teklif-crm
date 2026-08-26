@@ -78,7 +78,7 @@ async function sendFeedbackEmail(customerEmail, customerName, projectName, total
  * hem teklifi goruyor hem imzalayip karar veriyor. Baglanti yoksa buton da yok.
  */
 async function sendReminderEmail(customerEmail, customerName, projectName, total, opts = {}) {
-    const { senderName, replyTo, approvalLink } = opts;
+    const { senderName, replyTo, approvalLink, userId } = opts;
     const firma = senderName || process.env.MAIL_FROM_NAME || 'Teklif';
     const tutar = typeof total === 'number'
         ? total.toLocaleString('tr-TR', { style: 'currency', currency: 'TRY' })
@@ -93,10 +93,14 @@ async function sendReminderEmail(customerEmail, customerName, projectName, total
              <span style="color:#2563eb; word-break:break-all;">${approvalLink}</span></p>`
         : `<p>Kararınızı bu e-postayı yanıtlayarak iletebilirsiniz.</p>`;
 
+    // Hatirlatma da kullanicinin kendi hesabindan gitmeli: musteri, teklifi
+    // aldigi adresten devam eden bir yazisma gormeli.
+    const kendi = userId ? require('./user-mail').kullaniciTasiyicisi(userId) : null;
+
     const mailOptions = {
-        from: `"${firma}" <${MAIL_FROM}>`,
+        from: `"${firma}" <${kendi ? kendi.gonderenAdres : MAIL_FROM}>`,
         to: customerEmail,
-        replyTo: replyTo || undefined,
+        replyTo: kendi ? undefined : (replyTo || undefined),
         subject: projectName ? `Hatırlatma: ${projectName} teklifi` : 'Teklifimiz hakkında hatırlatma',
         html: `
             <div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; padding:20px; color:#0f172a; max-width:560px;">
@@ -110,6 +114,13 @@ async function sendReminderEmail(customerEmail, customerName, projectName, total
         `
     };
 
+    if (kendi) {
+        try {
+            return await kendi.tasiyici.sendMail(mailOptions);
+        } finally {
+            try { kendi.tasiyici.close(); } catch (e) { /* onemsiz */ }
+        }
+    }
     return transporter.sendMail(mailOptions);
 }
 
@@ -126,7 +137,7 @@ async function sendReminderEmail(customerEmail, customerName, projectName, total
  * @param {string} [opts.senderName]  Gonderen isletmenin adi (cok kullanicili mod)
  * @param {string} [opts.replyTo]     Musterinin cevabinin gidecegi adres
  */
-async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName, senderName, replyTo }) {
+async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName, senderName, replyTo, userId }) {
     const safeMessage = (message && message.trim())
         ? message.trim().replace(/\n/g, '<br>')
         : `${projectName ? '<strong>' + projectName + '</strong> projesi için ' : ''}hazırladığımız teklifimizi ekte PDF olarak iletiyoruz.`;
@@ -137,9 +148,17 @@ async function sendProposalEmail({ to, customerName, projectName, message, pdfBu
     // aksi halde tum musteri cevaplari bize dusrdu.
     const displayName = senderName || process.env.MAIL_FROM_NAME || 'Teklif';
 
+    // Kullanici kendi e-posta hesabini tanimladiysa gonderim GERCEKTEN onun
+    // adresinden yapilir; musteri tanidigi adresi gorur ve Gmail'deki
+    // "via <bizim alan adimiz>" ibaresi cikmaz. Tanimlamadiysa asagidaki
+    // platform gonderimi devreye girer.
+    const kendi = userId ? require('./user-mail').kullaniciTasiyicisi(userId) : null;
+    const gonderenAdres = kendi ? kendi.gonderenAdres : MAIL_FROM;
+
     const mailOptions = {
-        from: `"${displayName}" <${MAIL_FROM}>`,
-        replyTo: replyTo || undefined,
+        from: `"${displayName}" <${gonderenAdres}>`,
+        // Kendi hesabindan giderken Reply-To gereksiz: zarfin adresi zaten onun.
+        replyTo: kendi ? undefined : (replyTo || undefined),
         to,
         subject: `Teklifiniz${projectName ? ': ' + projectName : ''}`,
         html: `
@@ -160,6 +179,14 @@ async function sendProposalEmail({ to, customerName, projectName, message, pdfBu
         ]
     };
 
+    if (kendi) {
+        try {
+            return await kendi.tasiyici.sendMail(mailOptions);
+        } finally {
+            // Her gonderimde yeni baglanti aciliyor; birakilirsa soketler birikir.
+            try { kendi.tasiyici.close(); } catch (e) { /* onemsiz */ }
+        }
+    }
     return transporter.sendMail(mailOptions);
 }
 

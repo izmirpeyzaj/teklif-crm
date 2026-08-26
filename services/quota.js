@@ -55,6 +55,17 @@ function enforce(kind) {
         const userId = req.user && req.user.id;
         if (!userId) return res.status(401).json({ message: 'Giris gerekli.' });
 
+        // Kullanici e-postayi KENDI hesabindan gonderiyorsa gunluk mail kotamiz
+        // uygulanmaz: o gonderim bizim kaynagimizi harcamiyor, kendi e-posta
+        // saglayicisinin limitlerine tabi. Kotayi yine de isletmek, kullaniciyi
+        // sebepsiz kisitlamak olurdu.
+        if (kind === 'email') {
+            try {
+                const ozet = require('./user-mail').ayarOzeti(userId);
+                if (ozet && ozet.yapilandirildi) return next();
+            } catch (e) { /* ayar okunamadi: normal kota isler */ }
+        }
+
         const limit = LIMITS[kind];
         if (used(userId, kind) >= limit) {
             return res.status(429).json({

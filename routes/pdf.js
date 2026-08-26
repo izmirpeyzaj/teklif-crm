@@ -372,7 +372,9 @@ router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), a
             // Gonderen kimligi oturumdan geliyor; istemcinin yolladigi senderName
             // yalnizca firma adi icin bir tercih, cevap adresi degil.
             senderName: senderName || req.user.company_name || undefined,
-            replyTo: req.user.email
+            replyTo: req.user.email,
+            // Kullanici kendi e-posta hesabini tanimladiysa gonderim ondan yapilir.
+            userId: req.user.id
         });
         } catch (mailErr) {
             // Basarisiz gonderim de kayda gecer. Aksi halde "yolladim saniyordum"

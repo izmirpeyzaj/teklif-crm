@@ -341,6 +341,35 @@ if (!orgCols.includes('member_sees_profit')) {
     console.log('organizations.member_sees_profit eklendi');
 }
 
+// Kullanicinin KENDI e-posta hesabindan gonderim.
+//
+// Varsayilan davranista zarfin gonderen adresi bizim dogrulanmis adresimiz;
+// musteri dogru ismi gorur ve yanit dogru kisiye gider ama Gmail bunu
+// "via <bizim alan adimiz>" diye gosterir. Kucuk isletmeler icin bu, teklifin
+// baskasi adina gonderilmis gibi gorunmesi demek.
+//
+// Bu alanlar doluysa gonderim kullanicinin kendi SMTP hesabindan yapilir:
+// musteri, tanidigi adresten gelen bir e-posta gorur.
+//
+// smtp_pass_enc: sifre DUZ METIN TUTULMAZ, AES-256-GCM ile sifrelenir
+// (services/secret-box.js). Veritabani yedegi sizarsa kullanicinin e-posta
+// sifresi de sizmis olurdu.
+const userCols2 = db.prepare("PRAGMA table_info(users)").all().map(c => c.name);
+for (const [sutun, tanim] of [
+    ['smtp_host', 'TEXT'],
+    ['smtp_port', 'INTEGER'],
+    ['smtp_secure', 'INTEGER'],
+    ['smtp_user', 'TEXT'],
+    ['smtp_pass_enc', 'TEXT'],
+    ['smtp_from', 'TEXT'],
+    ['smtp_checked_at', 'INTEGER']
+]) {
+    if (!userCols2.includes(sutun)) {
+        db.exec(`ALTER TABLE users ADD COLUMN ${sutun} ${tanim}`);
+        console.log(`users.${sutun} eklendi`);
+    }
+}
+
 // Var olan kurulumlarda proposal_links tablosuna origin sutununu ekle.
 const linkCols = db.prepare("PRAGMA table_info(proposal_links)").all().map(c => c.name);
 if (linkCols.length && !linkCols.includes('origin')) {

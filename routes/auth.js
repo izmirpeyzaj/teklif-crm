@@ -468,4 +468,68 @@ router.get('/google/callback', async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// Kendi e-posta hesabindan gonderim (SMTP)
+// ---------------------------------------------------------------------------
+// Varsayilan gonderimde zarfin adresi bizim dogrulanmis adresimiz; Gmail bunu
+// "via <bizim alan adimiz>" diye gosteriyor ve teklif baskasi adina
+// gonderilmis gibi duruyor. Buradan kullanici kendi hesabini tanimliyor.
+//
+// SIFRE HICBIR ZAMAN GERI DONMEZ: yanitta yalnizca "tanimli mi" bilgisi var.
+const userMail = require('../services/user-mail');
+
+router.get('/smtp', session.requireAuth, (req, res) => {
+    res.json({ smtp: userMail.ayarOzeti(req.user.id) });
+});
+
+// Once sinar, sonra kaydeder. Yanlis bilgiyi kaydedip aylar sonra
+// "teklifim gitmiyor" denmesin.
+router.put('/smtp', session.requireAuth, mailLimiter, async (req, res) => {
+    const { host, port, secure, user, pass, from } = req.body || {};
+    if (!host || !user || !pass) {
+        return res.status(400).json({ message: 'Sunucu, kullanıcı adı ve şifre gerekli.' });
+    }
+
+    const sonuc = await userMail.baglantiSina({ host, port, secure, user, pass });
+    if (!sonuc.ok) return res.status(400).json({ message: sonuc.hata, test: true });
+
+    try {
+        userMail.ayarlariKaydet(req.user.id, { host, port, secure, user, pass, from });
+        res.json({ ok: true, smtp: userMail.ayarOzeti(req.user.id) });
+    } catch (err) {
+        console.error('SMTP kaydi hatasi:', err.message);
+        res.status(500).json({ message: 'Ayarlar kaydedilemedi.' });
+    }
+});
+
+router.delete('/smtp', session.requireAuth, (req, res) => {
+    userMail.ayarlariSil(req.user.id);
+    res.json({ ok: true });
+});
+
+// Kayitli ayarlarla kendine bir deneme e-postasi gonderir.
+router.post('/smtp/test', session.requireAuth, mailLimiter, async (req, res) => {
+    const ozet = userMail.ayarOzeti(req.user.id);
+    if (!ozet || !ozet.yapilandirildi) {
+        return res.status(400).json({ message: 'Önce e-posta hesabınızı tanımlayın.' });
+    }
+    const kendi = userMail.kullaniciTasiyicisi(req.user.id);
+    if (!kendi) return res.status(400).json({ message: 'Kayıtlı ayarlar okunamadı. Şifrenizi tekrar girin.' });
+
+    try {
+        await kendi.tasiyici.sendMail({
+            from: `"${req.user.company_name || req.user.email}" <${kendi.gonderenAdres}>`,
+            to: req.user.email,
+            subject: 'Test e-postası — teklif sistemi',
+            text: 'Bu bir test e-postasıdır. Bu mesajı görüyorsanız teklifleriniz kendi ' +
+                  'e-posta adresinizden gönderilecek demektir.'
+        });
+        res.json({ ok: true, gonderildi: req.user.email });
+    } catch (err) {
+        res.status(400).json({ message: userMail.anlasilirHata(err) });
+    } finally {
+        try { kendi.tasiyici.close(); } catch (e) { /* onemsiz */ }
+    }
+});
+
 module.exports = router;

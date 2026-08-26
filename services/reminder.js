@@ -123,6 +123,9 @@ async function turAt() {
                 {
                     senderName: r.firma || r.gonderen_ad || r.org_adi,
                     replyTo: r.gonderen_eposta,
+                    // Hatirlatma da teklifi gonderen kisinin kendi hesabindan
+                    // gitsin; musteri ayni adresten devam eden bir yazisma gorsun.
+                    userId: r.sent_by,
                     approvalLink: yeniBaglantiUret(r.org_id, r.proposal_code)
                 }
             );

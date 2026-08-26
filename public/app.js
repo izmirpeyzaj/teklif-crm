@@ -20,6 +20,29 @@ const DEFAULT_TERMS = `GENEL HÜKÜMLER VE GARANTİ KOŞULLARI
 // değişiklikte (debounce) geri yükler. Şifre kapısı = tek işletme = tek hesap.
 // ====================================
 // ====================================
+// MOBIL MENU
+// ====================================
+// Kenar cubugu dar ekranda cekmeceye donusuyor (bkz. style.css MOBIL DUZEN).
+// Burada yalnizca govdeye bir sinif takip cikariyoruz; gorsel is CSS'te.
+
+window.menuAcKapa = (durum) => {
+    const acilsinMi = (durum === undefined) ? !document.body.classList.contains('menu-acik') : !!durum;
+    document.body.classList.toggle('menu-acik', acilsinMi);
+};
+
+// Bir menu ogesine basildiginda cekmece kapansin; aksi halde kullanici
+// sekmeyi degistiriyor ama ekranin onunde acik cekmeceyi goruyor.
+document.addEventListener('click', (e) => {
+    if (!document.body.classList.contains('menu-acik')) return;
+    if (e.target.closest('.sidebar .nav-item')) window.menuAcKapa(false);
+});
+
+// Ekran genisleyince (telefon yan cevrilince) cekmece acik kalmasin.
+window.addEventListener('resize', () => {
+    if (window.innerWidth > 860) document.body.classList.remove('menu-acik');
+});
+
+// ====================================
 // EKIP VERI KATMANI
 // ====================================
 // Eskiden tum veri tek bir JSON blogu olarak 3 saniyede bir gonderiliyordu ve
@@ -646,6 +669,177 @@ function onayDurumRozeti(l) {
 }
 
 // ====================================
+// KENDI E-POSTA HESABINDAN GONDERIM
+// ====================================
+// Varsayilan gonderimde zarfin adresi platformun dogrulanmis adresi; musteri
+// dogru ismi gorur ve yanit dogru kisiye gider ama Gmail bunu "via ..." diye
+// gosterir ve teklif baskasi adina gonderilmis gibi durur. Kullanici kendi
+// SMTP hesabini tanimlayinca e-posta gercekten kendi adresinden gidiyor.
+//
+// SIFRE ARAYUZE HIC DONMEZ; sunucu yalnizca "tanimli mi" bilgisini veriyor.
+
+// Yaygin saglayicilarin ayarlari — kullanicidan sunucu adresi/port ezberlemesini
+// beklemek, ozelligin hic kullanilmamasi demek olurdu.
+const SMTP_HAZIR = {
+    gmail:  { ad: 'Gmail / Google Workspace', host: 'smtp.gmail.com',        port: 587, secure: false,
+              not: 'Gmail hesap şifreniz ÇALIŞMAZ. Google hesabınızda iki adımlı doğrulamayı açıp ' +
+                   '"Uygulama şifresi" oluşturmanız ve onu girmeniz gerekir.' },
+    yandex: { ad: 'Yandex Mail',              host: 'smtp.yandex.com',       port: 465, secure: true,
+              not: 'Yandex\'ta "Uygulama parolası" oluşturup onu kullanmanız gerekebilir.' },
+    outlook:{ ad: 'Outlook / Microsoft 365',  host: 'smtp.office365.com',    port: 587, secure: false,
+              not: '' },
+    yahoo:  { ad: 'Yahoo Mail',               host: 'smtp.mail.yahoo.com',   port: 465, secure: true,
+              not: 'Yahoo\'da "Uygulama şifresi" oluşturmanız gerekir.' },
+    diger:  { ad: 'Diğer (elle gir)',         host: '',                      port: 587, secure: false,
+              not: 'Sunucu bilgilerini e-posta sağlayıcınızın destek sayfasından alabilirsiniz.' }
+};
+
+let _smtp = null;
+
+async function smtpYukle() {
+    const alan = document.getElementById('smtpAlani');
+    if (!alan) return;
+    try {
+        const r = await fetch('/api/auth/smtp');
+        if (!r.ok) throw new Error('okunamadi');
+        _smtp = (await r.json()).smtp;
+        smtpCiz();
+    } catch (e) {
+        alan.innerHTML = '<p class="hint" style="color:#dc2626;">E-posta ayarları yüklenemedi.</p>';
+    }
+}
+
+function smtpCiz() {
+    const alan = document.getElementById('smtpAlani');
+    if (!alan) return;
+
+    if (_smtp && _smtp.yapilandirildi) {
+        alan.innerHTML =
+            '<div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:9px; padding:13px 15px;">' +
+                '<div style="font-weight:600; font-size:.9rem; color:#15803d;">✓ Kendi hesabınızdan gönderiliyor</div>' +
+                '<div style="font-size:.82rem; color:var(--text-muted); margin-top:5px;">' +
+                    kacisliMetin(_smtp.from || _smtp.user) + ' · ' + kacisliMetin(_smtp.host) + ':' + _smtp.port +
+                '</div>' +
+            '</div>' +
+            '<div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">' +
+                '<button class="btn btn-secondary" style="flex:1 1 130px;" onclick="smtpTest()">Test e-postası gönder</button>' +
+                '<button class="btn btn-secondary" style="flex:1 1 110px;" onclick="smtpFormGoster()">Değiştir</button>' +
+                '<button class="btn btn-secondary" style="flex:1 1 110px; border-color:#dc2626; color:#dc2626;" onclick="smtpSil()">Kaldır</button>' +
+            '</div>' +
+            '<div id="smtpSonuc" style="margin-top:8px; font-size:.8rem;"></div>';
+        return;
+    }
+
+    alan.innerHTML =
+        '<p class="hint" style="margin-top:0;">Şu anda teklifleriniz sistem adresimizden gönderiliyor.</p>' +
+        '<button class="btn btn-primary" style="width:100%;" onclick="smtpFormGoster()">Kendi e-posta hesabımı tanımla</button>' +
+        '<div id="smtpSonuc" style="margin-top:8px; font-size:.8rem;"></div>';
+}
+
+window.smtpFormGoster = () => {
+    const alan = document.getElementById('smtpAlani');
+    const secenekler = Object.keys(SMTP_HAZIR)
+        .map(k => '<option value="' + k + '">' + SMTP_HAZIR[k].ad + '</option>').join('');
+
+    alan.innerHTML =
+        '<div class="form-group"><label>E-posta sağlayıcınız</label>' +
+            '<select id="smtpSaglayici" class="form-control" onchange="smtpSaglayiciSecildi()">' + secenekler + '</select>' +
+            '<small id="smtpNot" style="display:block; color:#b45309; font-size:.78rem; margin-top:6px;"></small>' +
+        '</div>' +
+        '<div class="form-group"><label>E-posta adresiniz</label>' +
+            '<input type="email" id="smtpUser" class="form-control" placeholder="siz@firmaniz.com" autocomplete="username"></div>' +
+        '<div class="form-group"><label>Şifre / uygulama şifresi</label>' +
+            '<input type="password" id="smtpPass" class="form-control" placeholder="••••••••" autocomplete="new-password">' +
+            '<small style="color:var(--text-muted); font-size:.76rem;">Şifreniz şifrelenerek saklanır ve ekranda bir daha gösterilmez.</small></div>' +
+        '<div style="display:flex; gap:10px;">' +
+            '<div class="form-group" style="flex:2;"><label>SMTP sunucusu</label>' +
+                '<input type="text" id="smtpHost" class="form-control" placeholder="smtp.firmaniz.com"></div>' +
+            '<div class="form-group" style="flex:1;"><label>Port</label>' +
+                '<input type="number" id="smtpPort" class="form-control" value="587"></div>' +
+        '</div>' +
+        '<label style="display:flex; gap:8px; align-items:center; font-size:.85rem; font-weight:normal; margin-bottom:14px; cursor:pointer;">' +
+            '<input type="checkbox" id="smtpSecure"> SSL kullan (465 portu için işaretleyin)</label>' +
+        '<div style="display:flex; gap:8px;">' +
+            '<button class="btn btn-primary" style="flex:1;" onclick="smtpKaydet(this)">Test et ve kaydet</button>' +
+            '<button class="btn btn-secondary" style="flex:0 0 100px;" onclick="smtpYukle()">Vazgeç</button>' +
+        '</div>' +
+        '<div id="smtpSonuc" style="margin-top:10px; font-size:.82rem;"></div>';
+
+    smtpSaglayiciSecildi();
+    if (_smtp && _smtp.user) document.getElementById('smtpUser').value = _smtp.user;
+};
+
+window.smtpSaglayiciSecildi = () => {
+    const k = document.getElementById('smtpSaglayici').value;
+    const p = SMTP_HAZIR[k];
+    if (!p) return;
+    if (k !== 'diger') {
+        document.getElementById('smtpHost').value = p.host;
+        document.getElementById('smtpPort').value = p.port;
+        document.getElementById('smtpSecure').checked = p.secure;
+    }
+    document.getElementById('smtpNot').textContent = p.not || '';
+};
+
+window.smtpKaydet = async (btn) => {
+    const sonuc = document.getElementById('smtpSonuc');
+    const govde = {
+        host: document.getElementById('smtpHost').value.trim(),
+        port: parseInt(document.getElementById('smtpPort').value) || 587,
+        secure: document.getElementById('smtpSecure').checked,
+        user: document.getElementById('smtpUser').value.trim(),
+        pass: document.getElementById('smtpPass').value,
+        from: document.getElementById('smtpUser').value.trim()
+    };
+    if (!govde.host || !govde.user || !govde.pass) {
+        sonuc.innerHTML = '<span style="color:#dc2626;">Sunucu, e-posta ve şifre gerekli.</span>';
+        return;
+    }
+
+    const eski = btn.innerHTML;
+    btn.disabled = true; btn.innerHTML = '⏳ Bağlantı sınanıyor…';
+    sonuc.innerHTML = '';
+    try {
+        const r = await fetch('/api/auth/smtp', {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(govde)
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            sonuc.innerHTML = '<span style="color:#dc2626;">' + kacisliMetin(j.message || 'Kaydedilemedi.') + '</span>';
+            return;
+        }
+        _smtp = j.smtp;
+        smtpCiz();
+        const k = document.getElementById('smtpSonuc');
+        if (k) k.innerHTML = '<span style="color:#16a34a;">✓ Bağlantı doğrulandı. Teklifleriniz artık kendi adresinizden gidecek.</span>';
+    } catch (e) {
+        sonuc.innerHTML = '<span style="color:#dc2626;">Bağlantı hatası.</span>';
+    } finally {
+        btn.disabled = false; btn.innerHTML = eski;
+    }
+};
+
+window.smtpTest = async () => {
+    const sonuc = document.getElementById('smtpSonuc');
+    sonuc.innerHTML = '<span class="hint">Gönderiliyor…</span>';
+    try {
+        const r = await fetch('/api/auth/smtp/test', { method: 'POST' });
+        const j = await r.json().catch(() => ({}));
+        sonuc.innerHTML = r.ok
+            ? '<span style="color:#16a34a;">✓ Test e-postası ' + kacisliMetin(j.gonderildi || '') + ' adresine gönderildi. Gelen kutunuzu kontrol edin.</span>'
+            : '<span style="color:#dc2626;">' + kacisliMetin(j.message || 'Gönderilemedi.') + '</span>';
+    } catch (e) {
+        sonuc.innerHTML = '<span style="color:#dc2626;">Bağlantı hatası.</span>';
+    }
+};
+
+window.smtpSil = async () => {
+    if (!confirm('Kendi e-posta hesabınız kaldırılsın mı?\n\nTeklifleriniz yeniden sistem adresimizden gönderilir.')) return;
+    await fetch('/api/auth/smtp', { method: 'DELETE' });
+    await smtpYukle();
+};
+
+// ====================================
 // EKIP YONETIMI
 // ====================================
 // Veri artik organizasyona ait (bkz. EKIP VERI KATMANI). Bir kullanici tek bir
@@ -1232,6 +1426,26 @@ async function renderUserHeader() {
             ? currentUser.company_name + ' - ' + currentUser.email
             : currentUser.email;
     }
+
+    // Marka: cok kullanicili urunde kenar cubugunda ve sekme basliginda
+    // kullanicinin KENDI firma adi yazmali. Onceden sabit "crm.izmirev.online"
+    // yaziyordu — hem yanlis alan adi hem de baskasinin markasi.
+    const firma = (currentUser.company_name || '').trim();
+    const marka = document.getElementById('markaAdi');
+    if (marka) marka.textContent = firma || 'Teklif CRM';
+    document.title = (firma || 'Teklif CRM') + ' | Teklif Hazırlama';
+
+    // Ust bardaki kimlik. Bu alanlar daha once hic doldurulmuyordu: sayfada
+    // ayni id iki kez vardi ve sabit "Kullanici / Yonetici / U" goruluyordu.
+    const ad = (currentUser.display_name || '').trim() || firma || currentUser.email;
+    const adEl = document.getElementById('ustBarKullanici');
+    if (adEl) adEl.textContent = ad;
+
+    const rolEl = document.getElementById('userRol');
+    if (rolEl) rolEl.textContent = currentUser.role === 'member' ? 'Ekip üyesi' : 'Sahip';
+
+    const avatar = document.getElementById('userAvatar');
+    if (avatar) avatar.textContent = (ad.trim()[0] || '?').toLocaleUpperCase('tr');
 
     try {
         const res = await (await fetch('/api/usage')).json();
@@ -3558,6 +3772,7 @@ window.switchTab = (n) => {
     if (n === 'settings') {
         els.tabSettings.classList.remove('hidden');
         ekibiYukle();   // her acilista tazele: davetler ve uyeler degismis olabilir
+        smtpYukle();
     }
 };
 
