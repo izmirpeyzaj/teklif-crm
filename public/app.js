@@ -670,6 +670,198 @@ function onayDurumRozeti(l) {
 }
 
 // ====================================
+// REVIZYON KARSILASTIRMA
+// ====================================
+// Musteriyle pazarlik ederken teklif V1, V2, V3 diye ilerliyor ve "neyi
+// degistirmistik" sorusunun cevabi kimsede olmuyordu. Iki surumu yan yana
+// koyup farki gostermek, hem ekip icinde hem musteriyle konusurken en cok
+// ihtiyac duyulan sey.
+//
+// Gruplama musteri + proje adina gore; kod zaten bu ikisinin unsuzlerinden
+// turedigi icin ayni koda sahip farkli isler ayni gruba dusmesin diye kodu
+// degil ADLARI esitliyoruz.
+
+function revizyonGruplari() {
+    const gruplar = new Map();
+    (state.savedProposals || []).forEach(t => {
+        const anahtar = aramaAnahtari(t.customerName) + '|' + aramaAnahtari(t.projectName);
+        if (!gruplar.has(anahtar)) {
+            gruplar.set(anahtar, { musteri: t.customerName, proje: t.projectName, surumler: [] });
+        }
+        gruplar.get(anahtar).surumler.push(t);
+    });
+
+    gruplar.forEach(g => g.surumler.sort(
+        (a, b) => (parseInt(a.version) || 0) - (parseInt(b.version) || 0)
+    ));
+    return [...gruplar.values()].filter(g => g.surumler.length > 1);
+}
+
+// Iki teklifin kalemlerini karsilastirir. Kimlik yerine ADA gore esliyoruz:
+// kullanici ayni hizmeti silip yeniden ekleyebilir, kimlik degisir ama
+// kullanici acisindan ayni kalemdir.
+function kalemFarki(a, b) {
+    const topla = (t) => {
+        const m = new Map();
+        [...(t.items || []), ...(t.products || [])].forEach(i => {
+            if (!i || !i.name) return;
+            m.set(aramaAnahtari(i.name), {
+                ad: i.name,
+                qty: parseFloat(i.qty) || 0,
+                price: parseFloat(i.price) || 0,
+                birim: i.unit || ''
+            });
+        });
+        return m;
+    };
+
+    const eski = topla(a), yeni = topla(b);
+    const tumAnahtarlar = new Set([...eski.keys(), ...yeni.keys()]);
+    const satirlar = [];
+
+    tumAnahtarlar.forEach(k => {
+        const e = eski.get(k), y = yeni.get(k);
+        if (!e) satirlar.push({ durum: 'eklendi', ad: y.ad, yeni: y });
+        else if (!y) satirlar.push({ durum: 'cikarildi', ad: e.ad, eski: e });
+        else if (e.qty !== y.qty || Math.abs(e.price - y.price) > 0.004) {
+            satirlar.push({ durum: 'degisti', ad: y.ad, eski: e, yeni: y });
+        } else {
+            satirlar.push({ durum: 'ayni', ad: y.ad, eski: e, yeni: y });
+        }
+    });
+
+    const sira = { eklendi: 0, cikarildi: 1, degisti: 2, ayni: 3 };
+    return satirlar.sort((x, z) => sira[x.durum] - sira[z.durum] || x.ad.localeCompare(z.ad, 'tr'));
+}
+
+window.revizyonAc = () => {
+    const gruplar = revizyonGruplari();
+
+    let kutu = document.getElementById('revizyonModal');
+    if (!kutu) {
+        kutu = document.createElement('div');
+        kutu.id = 'revizyonModal';
+        document.body.appendChild(kutu);
+        kutu.addEventListener('click', (e) => { if (e.target === kutu) window.revizyonKapat(); });
+    }
+
+    const icerik = gruplar.length
+        ? '<div style="padding:8px 0;">' + gruplar.map((g, i) =>
+            '<div onclick="revizyonGoster(' + i + ')" style="padding:12px 4px; border-bottom:1px solid var(--border); cursor:pointer;" ' +
+                 'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'">' +
+                '<div style="font-weight:600; font-size:.92rem;">' + kacisliMetin(g.musteri || '—') + '</div>' +
+                '<div style="font-size:.79rem; color:var(--text-muted);">' +
+                    (g.proje ? kacisliMetin(g.proje) + ' · ' : '') + g.surumler.length + ' revizyon (' +
+                    g.surumler.map(t => 'V' + (t.version || '?')).join(', ') + ')</div>' +
+            '</div>').join('') + '</div>'
+        : '<p class="hint" style="text-align:center; padding:26px 10px;">Karşılaştırılacak revizyon yok.<br>' +
+          'Aynı müşteri ve proje için ikinci bir teklif kaydettiğinizde burada görünür.</p>';
+
+    kutu.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:3000; ' +
+        'display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;';
+    kutu.innerHTML =
+        '<div id="revizyonIc" style="background:#fff; border-radius:14px; max-width:720px; width:100%; ' +
+             'max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; ' +
+                 'padding:18px 22px 14px; border-bottom:1px solid var(--border);">' +
+                '<h2 style="margin:0; font-size:1.05rem; color:var(--primary);">Revizyon Karşılaştırma</h2>' +
+                '<button onclick="revizyonKapat()" style="border:none; background:none; font-size:1.6rem; ' +
+                        'line-height:1; cursor:pointer; color:#94a3b8;">&times;</button>' +
+            '</div>' +
+            '<div style="padding:6px 22px 20px;">' + icerik + '</div>' +
+        '</div>';
+
+    document.body.style.overflow = 'hidden';
+};
+
+window.revizyonKapat = () => {
+    const k = document.getElementById('revizyonModal');
+    if (k) k.remove();
+    document.body.style.overflow = '';
+};
+
+let _revGrup = null;
+
+window.revizyonGoster = (i, aIdx, bIdx) => {
+    const gruplar = revizyonGruplari();
+    _revGrup = gruplar[i];
+    if (!_revGrup) return;
+
+    const n = _revGrup.surumler.length;
+    // Varsayilan: son iki surum — kullanicinin bakmak istedigi neredeyse her zaman bu.
+    const ai = aIdx != null ? Number(aIdx) : n - 2;
+    const bi = bIdx != null ? Number(bIdx) : n - 1;
+    const A = _revGrup.surumler[ai], B = _revGrup.surumler[bi];
+    if (!A || !B) return;
+
+    const fark = kalemFarki(A, B);
+    const toplamFark = (parseFloat(B.total) || 0) - (parseFloat(A.total) || 0);
+
+    const renk = { eklendi: '#16a34a', cikarildi: '#dc2626', degisti: '#b45309', ayni: '#94a3b8' };
+    const etiket = { eklendi: '+ Eklendi', cikarildi: '− Çıkarıldı', degisti: '± Değişti', ayni: 'Aynı' };
+
+    const satirlar = fark.map(r => {
+        const solTarafi = r.eski ? r.eski.qty + ' × ' + formatCurrency(r.eski.price) : '—';
+        const sagTarafi = r.yeni ? r.yeni.qty + ' × ' + formatCurrency(r.yeni.price) : '—';
+        return '<tr style="border-top:1px solid var(--border);">' +
+            '<td style="padding:7px 9px; font-size:.83rem;">' + kacisliMetin(r.ad) + '</td>' +
+            '<td style="padding:7px 9px; text-align:right; font-size:.81rem; color:var(--text-muted);">' + solTarafi + '</td>' +
+            '<td style="padding:7px 9px; text-align:right; font-size:.81rem; font-weight:' +
+                (r.durum === 'ayni' ? '400' : '600') + ';">' + sagTarafi + '</td>' +
+            '<td style="padding:7px 9px; text-align:right; font-size:.74rem; white-space:nowrap; color:' + renk[r.durum] + ';">' +
+                etiket[r.durum] + '</td>' +
+        '</tr>';
+    }).join('');
+
+    const secim = (mevcut, hangi) =>
+        '<select onchange="revizyonGoster(' + i + ', ' +
+            (hangi === 'a' ? 'this.value' : ai) + ', ' + (hangi === 'b' ? 'this.value' : bi) + ')" ' +
+            'style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:.83rem;">' +
+        _revGrup.surumler.map((t, idx) =>
+            '<option value="' + idx + '"' + (idx === mevcut ? ' selected' : '') + '>V' + (t.version || '?') +
+            ' · ' + formatDate(t.date) + '</option>').join('') +
+        '</select>';
+
+    document.getElementById('revizyonIc').innerHTML =
+        '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; ' +
+             'padding:18px 22px 14px; border-bottom:1px solid var(--border); position:sticky; top:0; background:#fff; z-index:2;">' +
+            '<div style="min-width:0;">' +
+                '<h2 style="margin:0; font-size:1.02rem; color:var(--primary);">' + kacisliMetin(_revGrup.musteri || '—') + '</h2>' +
+                '<div style="font-size:.79rem; color:var(--text-muted);">' + kacisliMetin(_revGrup.proje || '') + '</div>' +
+            '</div>' +
+            '<button onclick="revizyonAc()" style="border:none; background:none; font-size:.83rem; color:var(--accent); cursor:pointer;">← Liste</button>' +
+        '</div>' +
+        '<div style="padding:16px 22px 22px;">' +
+            '<div style="display:flex; gap:12px; align-items:center; margin-bottom:14px; flex-wrap:wrap;">' +
+                secim(ai, 'a') + '<span style="color:var(--text-muted);">→</span>' + secim(bi, 'b') +
+            '</div>' +
+
+            '<div style="display:grid; grid-template-columns:1fr auto; gap:6px; font-size:.88rem; ' +
+                 'background:var(--bg-soft, #f8fafc); border:1px solid var(--border); border-radius:9px; padding:12px 14px; margin-bottom:16px;">' +
+                '<div style="color:var(--text-muted);">V' + (A.version || '?') + ' toplamı</div>' +
+                '<div style="text-align:right;">' + formatCurrency(A.total || 0) + '</div>' +
+                '<div style="color:var(--text-muted);">V' + (B.version || '?') + ' toplamı</div>' +
+                '<div style="text-align:right;">' + formatCurrency(B.total || 0) + '</div>' +
+                '<div style="border-top:1px solid var(--border); padding-top:6px; font-weight:700;">Fark</div>' +
+                '<div style="border-top:1px solid var(--border); padding-top:6px; text-align:right; font-weight:700; color:' +
+                    (toplamFark > 0 ? '#16a34a' : (toplamFark < 0 ? '#dc2626' : 'inherit')) + ';">' +
+                    (toplamFark > 0 ? '+' : '') + formatCurrency(toplamFark) + '</div>' +
+            '</div>' +
+
+            '<div style="overflow-x:auto; border:1px solid var(--border); border-radius:9px;">' +
+                '<table style="width:100%; border-collapse:collapse; min-width:470px;">' +
+                    '<thead><tr style="background:#f8fafc;">' +
+                        '<th style="text-align:left; padding:7px 9px; font-size:.72rem; color:var(--text-muted);">KALEM</th>' +
+                        '<th style="text-align:right; padding:7px 9px; font-size:.72rem; color:var(--text-muted);">V' + (A.version || '?') + '</th>' +
+                        '<th style="text-align:right; padding:7px 9px; font-size:.72rem; color:var(--text-muted);">V' + (B.version || '?') + '</th>' +
+                        '<th style="text-align:right; padding:7px 9px; font-size:.72rem; color:var(--text-muted);">DURUM</th>' +
+                    '</tr></thead><tbody>' + satirlar + '</tbody>' +
+                '</table>' +
+            '</div>' +
+        '</div>';
+};
+
+// ====================================
 // TEKLIF SABLONLARI
 // ====================================
 // Ayni isi tekrar tekrar veren isletmelerde her teklifte ayni 8-10 kalem
