@@ -669,6 +669,235 @@ function onayDurumRozeti(l) {
 }
 
 // ====================================
+// TOPLU FIYAT GUNCELLEME
+// ====================================
+// Enflasyon ortaminda fiyat listesini guncellemek gerekiyor ve bugune kadar
+// bunun tek yolu 39 hizmeti tek tek acip duzenlemekti — pratikte kimse yapmaz,
+// liste eskir ve teklifler yanlis fiyatla gider.
+//
+// Iki sey bilerek boyle:
+//   * ONIZLEME zorunlu. Bu islem TUM fiyatlari degistiriyor; kullanicinin
+//     "uygula" demeden once eski/yeni fiyati gormesi gerekiyor.
+//   * GERI ALMA var. Yanlis oran girip listeyi bozmak cok kolay; onceki
+//     fiyatlar saklaniyor ve tek tikla geri donuluyor.
+
+const TOPLU_YEDEK_ANAHTAR = 'teklif_toplu_fiyat_yedek';
+let _topluTur = 'hizmet';
+
+function topluListe(tur) {
+    return tur === 'urun' ? (state.products || []) : (state.jobs || []);
+}
+
+// Yuvarlama: "1.247,50 TL" gibi bir fiyat listede kotu duruyor ve musteride
+// hesap makinesiyle bulunmus izlenimi birakiyor.
+function fiyatYuvarla(deger, mod) {
+    if (mod === 'yok') return Math.round(deger * 100) / 100;
+    if (mod === '1') return Math.round(deger);
+    if (mod === '5') return Math.round(deger / 5) * 5;
+    if (mod === '10') return Math.round(deger / 10) * 10;
+    if (mod === '50') return Math.round(deger / 50) * 50;
+    return deger;
+}
+
+function topluHesapla() {
+    const yon = document.querySelector('input[name="topluYon"]:checked').value;   // artir | azalt
+    const tip = document.querySelector('input[name="topluTip"]:checked').value;   // yuzde | tutar
+    const deger = parseFloat(String(document.getElementById('topluDeger').value).replace(',', '.')) || 0;
+    const yuvarla = document.getElementById('topluYuvarla').value;
+    const isaret = yon === 'azalt' ? -1 : 1;
+
+    return topluListe(_topluTur).map(k => {
+        const eski = parseFloat(k.price) || 0;
+        let yeni = tip === 'yuzde' ? eski * (1 + isaret * deger / 100) : eski + isaret * deger;
+        if (yeni < 0) yeni = 0;                       // negatif fiyat olmaz
+        yeni = fiyatYuvarla(yeni, yuvarla);
+        return { id: k.id, ad: k.name, eski, yeni, birim: k.unit || '' };
+    });
+}
+
+function topluOnizlemeCiz() {
+    const kutu = document.getElementById('topluOnizleme');
+    if (!kutu) return;
+    const satirlar = topluHesapla();
+
+    if (!satirlar.length) {
+        kutu.innerHTML = '<p class="hint" style="text-align:center; padding:14px;">Güncellenecek kayıt yok.</p>';
+        return;
+    }
+
+    const degisen = satirlar.filter(r => Math.abs(r.yeni - r.eski) > 0.004).length;
+    const eskiToplam = satirlar.reduce((a, r) => a + r.eski, 0);
+    const yeniToplam = satirlar.reduce((a, r) => a + r.yeni, 0);
+
+    kutu.innerHTML =
+        '<div style="font-size:.8rem; color:var(--text-muted); margin-bottom:8px;">' +
+            satirlar.length + ' kayıttan <strong>' + degisen + '</strong> tanesi değişecek · ' +
+            'liste ortalaması ' + formatCurrency(eskiToplam / satirlar.length) + ' → ' +
+            formatCurrency(yeniToplam / satirlar.length) +
+        '</div>' +
+        '<div style="max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;">' +
+            '<table style="width:100%; border-collapse:collapse; font-size:.83rem;">' +
+                '<thead><tr style="position:sticky; top:0; background:#f8fafc;">' +
+                    '<th style="text-align:left; padding:7px 9px; font-size:.72rem; color:var(--text-muted);">KALEM</th>' +
+                    '<th style="text-align:right; padding:7px 9px; font-size:.72rem; color:var(--text-muted);">ESKİ</th>' +
+                    '<th style="text-align:right; padding:7px 9px; font-size:.72rem; color:var(--text-muted);">YENİ</th>' +
+                '</tr></thead><tbody>' +
+                satirlar.map(r =>
+                    '<tr style="border-top:1px solid var(--border);">' +
+                        '<td style="padding:6px 9px;">' + kacisliMetin(r.ad) + '</td>' +
+                        '<td style="padding:6px 9px; text-align:right; color:var(--text-muted);">' + formatCurrency(r.eski) + '</td>' +
+                        '<td style="padding:6px 9px; text-align:right; font-weight:600; color:' +
+                            (r.yeni > r.eski ? '#16a34a' : (r.yeni < r.eski ? '#dc2626' : 'inherit')) + ';">' +
+                            formatCurrency(r.yeni) + '</td>' +
+                    '</tr>').join('') +
+            '</tbody></table>' +
+        '</div>';
+}
+
+window.topluFiyatAc = (tur) => {
+    _topluTur = tur === 'urun' ? 'urun' : 'hizmet';
+    const adet = topluListe(_topluTur).length;
+    const etiket = _topluTur === 'urun' ? 'ürün' : 'hizmet';
+
+    if (!adet) { alert('Güncellenecek ' + etiket + ' bulunamadı.'); return; }
+
+    const yedek = topluYedekOku();
+    const geriAlHtml = (yedek && yedek.tur === _topluTur)
+        ? '<div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:10px 12px; margin-bottom:14px;">' +
+              '<div style="font-size:.82rem; color:#92400e;">Son güncelleme: ' +
+                  new Date(yedek.zaman).toLocaleString('tr-TR') + ' · ' + yedek.kayitlar.length + ' kayıt</div>' +
+              '<button class="btn btn-secondary" style="width:100%; margin-top:8px; font-size:.82rem; padding:6px;" ' +
+                      'onclick="topluGeriAl()">↩ Son güncellemeyi geri al</button>' +
+          '</div>'
+        : '';
+
+    let kutu = document.getElementById('topluFiyatModal');
+    if (!kutu) {
+        kutu = document.createElement('div');
+        kutu.id = 'topluFiyatModal';
+        document.body.appendChild(kutu);
+        kutu.addEventListener('click', (e) => { if (e.target === kutu) window.topluFiyatKapat(); });
+    }
+
+    kutu.style.cssText = 'position:fixed; inset:0; background:rgba(15,23,42,.55); z-index:3000; ' +
+        'display:flex; align-items:center; justify-content:center; padding:16px; overflow-y:auto;';
+    kutu.innerHTML =
+        '<div style="background:#fff; border-radius:14px; max-width:600px; width:100%; max-height:90vh; ' +
+             'overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,.3);">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; gap:12px; ' +
+                 'padding:18px 22px 14px; border-bottom:1px solid var(--border); position:sticky; top:0; background:#fff; z-index:2;">' +
+                '<h2 style="margin:0; font-size:1.05rem; color:var(--primary);">Toplu Fiyat Güncelle · ' +
+                    adet + ' ' + etiket + '</h2>' +
+                '<button onclick="topluFiyatKapat()" style="border:none; background:none; font-size:1.6rem; ' +
+                        'line-height:1; cursor:pointer; color:#94a3b8;">&times;</button>' +
+            '</div>' +
+            '<div style="padding:18px 22px 22px;">' +
+                geriAlHtml +
+                '<div style="display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px;">' +
+                    '<div>' +
+                        '<div style="font-size:.78rem; color:var(--text-muted); margin-bottom:5px;">İşlem</div>' +
+                        '<label style="font-weight:normal; margin-right:12px;"><input type="radio" name="topluYon" value="artir" checked onchange="topluOnizlemeCiz()"> Zam</label>' +
+                        '<label style="font-weight:normal;"><input type="radio" name="topluYon" value="azalt" onchange="topluOnizlemeCiz()"> İndirim</label>' +
+                    '</div>' +
+                    '<div>' +
+                        '<div style="font-size:.78rem; color:var(--text-muted); margin-bottom:5px;">Tür</div>' +
+                        '<label style="font-weight:normal; margin-right:12px;"><input type="radio" name="topluTip" value="yuzde" checked onchange="topluOnizlemeCiz()"> Yüzde (%)</label>' +
+                        '<label style="font-weight:normal;"><input type="radio" name="topluTip" value="tutar" onchange="topluOnizlemeCiz()"> Sabit tutar (₺)</label>' +
+                    '</div>' +
+                '</div>' +
+                '<div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">' +
+                    '<div style="flex:1; min-width:120px;">' +
+                        '<label style="font-size:.82rem;">Değer</label>' +
+                        '<input type="number" id="topluDeger" class="form-control" value="10" min="0" step="0.5" oninput="topluOnizlemeCiz()">' +
+                    '</div>' +
+                    '<div style="flex:1; min-width:150px;">' +
+                        '<label style="font-size:.82rem;">Yuvarlama</label>' +
+                        '<select id="topluYuvarla" class="form-control" onchange="topluOnizlemeCiz()">' +
+                            '<option value="1">En yakın 1 ₺</option>' +
+                            '<option value="5" selected>En yakın 5 ₺</option>' +
+                            '<option value="10">En yakın 10 ₺</option>' +
+                            '<option value="50">En yakın 50 ₺</option>' +
+                            '<option value="yok">Yuvarlama yok</option>' +
+                        '</select>' +
+                    '</div>' +
+                '</div>' +
+                '<div id="topluOnizleme" style="margin-bottom:16px;"></div>' +
+                '<div style="display:flex; gap:10px;">' +
+                    '<button class="btn btn-primary" style="flex:1;" onclick="topluUygula()">Uygula</button>' +
+                    '<button class="btn btn-secondary" style="flex:0 0 110px;" onclick="topluFiyatKapat()">Vazgeç</button>' +
+                '</div>' +
+                '<p class="hint" style="margin:10px 0 0; font-size:.76rem;">Bu işlem yalnızca fiyat listenizi değiştirir. ' +
+                    'Daha önce kaydettiğiniz teklifler etkilenmez.</p>' +
+            '</div>' +
+        '</div>';
+
+    document.body.style.overflow = 'hidden';
+    topluOnizlemeCiz();
+};
+
+window.topluFiyatKapat = () => {
+    const k = document.getElementById('topluFiyatModal');
+    if (k) k.remove();
+    document.body.style.overflow = '';
+};
+
+function topluYedekOku() {
+    try { return JSON.parse(localStorage.getItem(TOPLU_YEDEK_ANAHTAR) || 'null'); }
+    catch (e) { return null; }
+}
+
+window.topluUygula = () => {
+    const satirlar = topluHesapla();
+    const degisen = satirlar.filter(r => Math.abs(r.yeni - r.eski) > 0.004);
+    if (!degisen.length) { alert('Değişen bir fiyat yok.'); return; }
+
+    if (!confirm(degisen.length + ' kalemin fiyatı güncellenecek.\n\nDevam edilsin mi?')) return;
+
+    const liste = topluListe(_topluTur);
+
+    // Geri alma icin onceki fiyatlari sakla. Yanlis oran girip listeyi bozmak
+    // kolay; kullanicinin tek tikla donebilmesi lazim.
+    localStorage.setItem(TOPLU_YEDEK_ANAHTAR, JSON.stringify({
+        tur: _topluTur,
+        zaman: Date.now(),
+        kayitlar: liste.map(k => ({ id: k.id, price: k.price }))
+    }));
+
+    const yeniler = new Map(satirlar.map(r => [String(r.id), r.yeni]));
+    liste.forEach(k => {
+        const y = yeniler.get(String(k.id));
+        if (y != null) k.price = y;
+    });
+
+    if (_topluTur === 'urun') { persistProducts(); renderProductList(); }
+    else { persistServices(); renderServiceList(); renderServiceChecklist(); }
+
+    topluFiyatKapat();
+    alert('✓ ' + degisen.length + ' kalemin fiyatı güncellendi.');
+};
+
+window.topluGeriAl = () => {
+    const yedek = topluYedekOku();
+    if (!yedek || !yedek.kayitlar) return;
+    if (!confirm('Son toplu güncelleme geri alınsın mı?\n\n' + yedek.kayitlar.length +
+                 ' kalem, ' + new Date(yedek.zaman).toLocaleString('tr-TR') + ' tarihindeki fiyatlarına döner.')) return;
+
+    const liste = topluListe(yedek.tur);
+    const eskiler = new Map(yedek.kayitlar.map(k => [String(k.id), k.price]));
+    liste.forEach(k => {
+        const e = eskiler.get(String(k.id));
+        if (e != null) k.price = e;
+    });
+
+    if (yedek.tur === 'urun') { persistProducts(); renderProductList(); }
+    else { persistServices(); renderServiceList(); renderServiceChecklist(); }
+
+    localStorage.removeItem(TOPLU_YEDEK_ANAHTAR);
+    topluFiyatKapat();
+    alert('✓ Fiyatlar geri alındı.');
+};
+
+// ====================================
 // GENEL ARAMA VE BILDIRIMLER
 // ====================================
 // Ust bardaki arama kutusu hicbir seye bagli degildi: kullanici yaziyor,

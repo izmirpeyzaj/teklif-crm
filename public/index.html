@@ -576,6 +576,9 @@
                                 <button class="btn btn-secondary"
                                     style="flex:1; min-width:140px; background:#c0392b; color:white; border:none; display:flex; align-items:center; justify-content:center;"
                                     onclick="clearAllServices()">🗑️ Hepsini Sil</button>
+                                <button class="btn btn-secondary"
+                                    style="flex:1; min-width:140px; background:#0f766e; color:white; border:none;"
+                                    onclick="topluFiyatAc('hizmet')">📈 Toplu Fiyat Güncelle</button>
                             </div>
                             <div style="text-align:right; margin-top:-10px; margin-bottom:15px;">
                                 <a href="#" onclick="downloadSampleExcel(); return false;"
@@ -650,9 +653,12 @@
                             <h3>Ürün Yönetimi</h3>
                             <p class="hint">Ürünlerinizi buradan düzenleyebilir veya yeni ekleyebilirsiniz.</p>
 
-                            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                                <button class="btn btn-primary" style="flex:1;" onclick="showProductForm()">+ Yeni Ürün
+                            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                                <button class="btn btn-primary" style="flex:1; min-width:140px;" onclick="showProductForm()">+ Yeni Ürün
                                     Ekle</button>
+                                <button class="btn btn-secondary"
+                                    style="flex:1; min-width:140px; background:#0f766e; color:white; border:none;"
+                                    onclick="topluFiyatAc('urun')">📈 Toplu Fiyat Güncelle</button>
                                 <label class="btn"
                                     style="flex:1; background:#3498db; color:white; text-align:center; cursor:pointer; display:flex; align-items:center; justify-content:center;">
                                     📥 Excel'den Aktar
@@ -809,73 +815,6 @@
                         </div>
                     </div>
 
-                    <!-- PRODUCTS TAB -->
-                    <div class="builder-content hidden" id="tab-products">
-                        <div class="management-container">
-                            <div style="margin-bottom:20px; border-bottom:1px solid #eee; padding-bottom:10px;">
-                                <h2 style="font-size:1.5rem; color:var(--primary)">Ürün Yönetimi</h2>
-                                <p style="font-size:0.9rem; color:var(--text-light)">Ürünlerinizi buradan yönetin veya
-                                    Excel ile toplu ekleyin.</p>
-                            </div>
-
-                            <div style="display:flex; gap:10px; margin-bottom:15px;">
-                                <button class="btn btn-primary" style="flex:1;" onclick="showProductForm()">+ Yeni Ürün
-                                    Ekle</button>
-                                <label class="btn btn-secondary"
-                                    style="flex:1; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
-                                    <i class="fa-solid fa-file-excel"></i> Excel İçe Aktar
-                                    <input type="file" accept=".xlsx,.xls,.csv" style="display:none;"
-                                        onchange="importProductsFromExcel(this)">
-                                </label>
-                            </div>
-
-                            <div id="productForm" class="hidden"
-                                style="border:1px solid #eee; padding:15px; background:#f0f8ff; border-radius:8px; margin-bottom:20px;">
-                                <h4 id="prodFormTitle">Ürün Ekle</h4>
-                                <input type="hidden" id="prodId">
-                                <div class="form-group">
-                                    <label>Ürün Adı</label>
-                                    <input type="text" id="prodName" class="form-control"
-                                        placeholder="Örn: Çim Tohumu Premium">
-                                </div>
-                                <div class="form-group">
-                                    <label>Açıklama</label>
-                                    <textarea id="prodDesc" class="form-control" rows="2"
-                                        placeholder="Ürün açıklaması..."></textarea>
-                                </div>
-                                <div class="form-group" style="display:flex; gap:10px;">
-                                    <div style="flex:1;">
-                                        <label>Birim Fiyat (₺)</label>
-                                        <input type="number" id="prodPrice" class="form-control" placeholder="0.00"
-                                            step="0.01">
-                                    </div>
-                                    <div style="flex:1;">
-                                        <label>Birim</label>
-                                        <input type="text" id="prodUnit" class="form-control"
-                                            placeholder="kg, adet, m²...">
-                                    </div>
-                                </div>
-                                <div style="display:flex; gap:10px;">
-                                    <button class="btn btn-primary" style="flex:1"
-                                        onclick="saveProduct()">Kaydet</button>
-                                    <button class="btn" style="flex:1; background:#95a5a6; color:white;"
-                                        onclick="hideProductForm()">İptal</button>
-                                </div>
-                            </div>
-
-                            <div id="productList" class="service-list">
-                                <!-- Populated by JS -->
-                            </div>
-
-                            <div
-                                style="margin-top:20px; padding:15px; background:#fffbeb; border:1px solid #fbbf24; border-radius:8px;">
-                                <h4 style="margin:0 0 10px 0; color:#d97706;"><i class="fa-solid fa-info-circle"></i>
-                                    Excel Formatı</h4>
-                                <p style="margin:0; font-size:0.85rem; color:#92400e;">Excel dosyanızda şu sütunlar
-                                    olmalı: <strong>Ürün Adı, Fiyat, Birim, Açıklama</strong></p>
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="builder-content hidden" id="tab-settings">
                         <div class="management-container">
