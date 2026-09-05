@@ -6,7 +6,7 @@
   "scripts": {
     "build": "echo 'Building...'",
     "start": "node server.js",
-    "test": "node tests/hatirlatma.test.js"
+    "test": "node tests/hatirlatma.test.js && node tests/pdf_header.test.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.1.0",

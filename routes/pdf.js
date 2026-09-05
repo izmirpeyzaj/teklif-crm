@@ -299,11 +299,45 @@ function getOrigin(req) {
 }
 
 function sanitizeFileName(name) {
+    const trMap = {
+        'ç': 'c', 'Ç': 'C',
+        'ğ': 'g', 'Ğ': 'G',
+        'ı': 'i', 'İ': 'I',
+        'ö': 'o', 'Ö': 'O',
+        'ş': 's', 'Ş': 'S',
+        'ü': 'u', 'Ü': 'U'
+    };
     return (name || 'teklif')
         .toString()
-        .replace(/[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ _.-]/g, '')
+        .replace(/[çÇğĞıİöÖşŞüÜ]/g, m => trMap[m] || m)
+        .replace(/[^a-zA-Z0-9 _.-]/g, '')
         .trim()
         .slice(0, 80) || 'teklif';
+}
+
+function safeContentDisposition(fileName, type = 'inline') {
+    const base = (fileName || 'teklif')
+        .toString()
+        .replace(/[/\\?%*:|"<>]/g, '')
+        .trim()
+        .slice(0, 80) || 'teklif';
+
+    const trMap = {
+        'ç': 'c', 'Ç': 'C',
+        'ğ': 'g', 'Ğ': 'G',
+        'ı': 'i', 'İ': 'I',
+        'ö': 'o', 'Ö': 'O',
+        'ş': 's', 'Ş': 'S',
+        'ü': 'u', 'Ü': 'U'
+    };
+    const asciiFallback = base
+        .replace(/[çÇğĞıİöÖşŞüÜ]/g, m => trMap[m] || m)
+        .replace(/[^\x20-\x7E]/g, '')
+        .replace(/"/g, '')
+        .trim() || 'teklif';
+
+    const encodedUtf8 = encodeURIComponent(base + '.pdf');
+    return `${type}; filename="${asciiFallback}.pdf"; filename*=UTF-8''${encodedUtf8}`;
 }
 
 // POST /api/pdf/preview -> returns the PDF inline (download / preview).
@@ -315,7 +349,7 @@ router.post('/preview', pdfLimiter, quota.enforce('pdf'), async (req, res) => {
         const pdf = await renderPdf(html, getOrigin(req), req.headers.cookie);
         res.set({
             'Content-Type': 'application/pdf',
-            'Content-Disposition': `inline; filename="${sanitizeFileName(fileName)}.pdf"`
+            'Content-Disposition': safeContentDisposition(fileName, 'inline')
         });
         res.send(pdf);
     } catch (err) {
