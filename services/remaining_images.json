@@ -1,0 +1,164 @@
+[
+  {
+    "category": "matbaa",
+    "filename": "matbaa_branda_vinil_baski.png",
+    "service": "Branda / Vinil Baskı",
+    "prompt": "a printed vinyl banner with eyelets stretched on a frame"
+  },
+  {
+    "category": "matbaa",
+    "filename": "matbaa_tabela_imalati_kutu_harf.png",
+    "service": "Tabela İmalatı (Kutu Harf)",
+    "prompt": "illuminated channel letter signage on a shop facade at night"
+  },
+  {
+    "category": "matbaa",
+    "filename": "matbaa_arac_giydirme.png",
+    "service": "Araç Giydirme",
+    "prompt": "a van being wrapped with printed vinyl graphics in a workshop"
+  },
+  {
+    "category": "matbaa",
+    "filename": "matbaa_promosyon_urun_baski_kalem_bardak.png",
+    "service": "Promosyon Ürün Baskı (Kalem/Bardak)",
+    "prompt": "branded promotional pens and mugs arranged on a desk"
+  },
+  {
+    "category": "matbaa",
+    "filename": "matbaa_tekstil_baski_tisort_yelek.png",
+    "service": "Tekstil Baskı (Tişört/Yelek)",
+    "prompt": "a screen printing press applying a logo onto a t-shirt"
+  },
+  {
+    "category": "matbaa",
+    "filename": "matbaa_etiket_ve_sticker_baski.png",
+    "service": "Etiket ve Sticker Baskı",
+    "prompt": "a roll of die-cut printed labels coming off a machine"
+  },
+  {
+    "category": "matbaa",
+    "filename": "matbaa_grafik_tasarim_hizmeti.png",
+    "service": "Grafik Tasarım Hizmeti",
+    "prompt": "a graphic designer working on a layout on a large monitor"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_sirket_kurulus_islemleri.png",
+    "service": "Şirket Kuruluş İşlemleri",
+    "prompt": "business registration documents and a company stamp on a desk"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_aylik_muhasebe_sahis.png",
+    "service": "Aylık Muhasebe (Şahıs)",
+    "prompt": "an accountant reviewing ledgers and invoices at a tidy desk"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_aylik_muhasebe_limited_a_s.png",
+    "service": "Aylık Muhasebe (Limited/A.Ş.)",
+    "prompt": "a corporate accounting team reviewing financial statements in a meeting"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_bordro_ve_sgk_islemleri.png",
+    "service": "Bordro ve SGK İşlemleri",
+    "prompt": "payroll spreadsheets and social security forms on a desk"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_kdv_kurumlar_vergisi_beyannamesi.png",
+    "service": "KDV / Kurumlar Vergisi Beyannamesi",
+    "prompt": "a tax declaration form being completed on a computer"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_mali_rapor_ve_butce_analizi.png",
+    "service": "Mali Rapor ve Bütçe Analizi",
+    "prompt": "financial charts and a cash flow report on a desk with a calculator"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_tesvik_ve_hibe_danismanligi.png",
+    "service": "Teşvik ve Hibe Danışmanlığı",
+    "prompt": "a consultant presenting a grant application plan to business owners"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_vergi_denetim_ve_uzlasma_destegi.png",
+    "service": "Vergi Denetim ve Uzlaşma Desteği",
+    "prompt": "a formal meeting across a table with tax documents and folders"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_kvkk_uyum_danismanligi.png",
+    "service": "KVKK Uyum Danışmanlığı",
+    "prompt": "a data protection compliance checklist and privacy policy documents"
+  },
+  {
+    "category": "danismanlik",
+    "filename": "danismanlik_is_plani_ve_fizibilite_raporu.png",
+    "service": "İş Planı ve Fizibilite Raporu",
+    "prompt": "a printed business plan with financial projections and charts"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_yangin_algilama_sistemi_kurulumu.png",
+    "service": "Yangın Algılama Sistemi Kurulumu",
+    "prompt": "a technician installing a smoke detector on an office ceiling"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_yangin_sondurme_tupu_dolumu.png",
+    "service": "Yangın Söndürme Tüpü Dolumu",
+    "prompt": "red fire extinguishers lined up for servicing and refilling"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_sprinkler_sistemi_montaji.png",
+    "service": "Sprinkler Sistemi Montajı",
+    "prompt": "ceiling fire sprinkler heads on exposed red piping in a warehouse"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_yangin_dolabi_ve_hidrant.png",
+    "service": "Yangın Dolabı ve Hidrant",
+    "prompt": "a wall-mounted fire hose cabinet and outdoor hydrant"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_yangin_pompa_grubu.png",
+    "service": "Yangın Pompa Grubu",
+    "prompt": "a fire pump room with red pumps and control panel"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_duman_tahliye_ve_basinclandirma.png",
+    "service": "Duman Tahliye ve Basınçlandırma",
+    "prompt": "a stairwell pressurisation fan unit in a building service room"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_asansor_montaji_yolcu.png",
+    "service": "Asansör Montajı (Yolcu)",
+    "prompt": "technicians installing a passenger elevator cabin in a shaft"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_asansor_periyodik_bakim.png",
+    "service": "Asansör Periyodik Bakım",
+    "prompt": "an elevator technician servicing machinery with a checklist"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_asansor_revizyon_modernizasyon.png",
+    "service": "Asansör Revizyon / Modernizasyon",
+    "prompt": "a modernised elevator control cabinet with new wiring"
+  },
+  {
+    "category": "yangin_asansor",
+    "filename": "yangin_asansor_yillik_kontrol_ve_etiketleme.png",
+    "service": "Yıllık Kontrol ve Etiketleme",
+    "prompt": "an inspector attaching a safety inspection label inside an elevator"
+  }
+]

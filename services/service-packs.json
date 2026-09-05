@@ -516,7 +516,7 @@
           "unit": "m²",
           "description": "Fabrika/depo tipi perdahlı beton uygulaması.",
           "conditions": "Yüzey sertleştirici ve kür dahildir. Çelik hasır ayrıdır.",
-          "image_url": "images/services/insaat_sap.png"
+          "image_url": "images/services/insaat_helikopterli_sap.png"
         },
         {
           "name": "Mantolama (Dış)",
@@ -1116,7 +1116,7 @@
           "unit": "seans",
           "description": "Saf su ile profesyonel panel temizleme hizmeti.",
           "conditions": "Ulaşımı zor çatılarda vinç ücreti eklenir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_panel_temizligi.png"
         },
         {
           "name": "Solar İnverter Değişimi",
@@ -1124,7 +1124,7 @@
           "unit": "adet",
           "description": "Arızalı inverter değişimi ve devreye alma.",
           "conditions": "İnverter bedeli hariçtir. Yazılım güncellemesi dahildir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_inverter.png"
         },
         {
           "name": "Akü Depolama Sistemi Kurulumu",
@@ -1140,7 +1140,7 @@
           "unit": "adet",
           "description": "Kendinden paneli LED sokak/bahçe direği montajı.",
           "conditions": "Ankraj ve temel betonu dahildir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_aydinlatma.png"
         },
         {
           "name": "Güneş Enerjisi Fizibilite Raporu",
@@ -1148,7 +1148,7 @@
           "unit": "rapor",
           "description": "Çatı alanı, gölgeleme analizi ve ROI hesaplama.",
           "conditions": "Yerinde keşif dahildir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_fizibilite.png"
         },
         {
           "name": "Arazi Tipi GES Kurulum (100kW+)",
@@ -1156,7 +1156,7 @@
           "unit": "kWp",
           "description": "Büyük ölçekli arazi projeleri için anahtar teslim kurulum.",
           "conditions": "Hafriyat ve panel bedeli hariç montaj işçiliğidir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_arazi_ges.png"
         },
         {
           "name": "Solar Panel Verimlilik Testi",
@@ -1164,7 +1164,7 @@
           "unit": "seans",
           "description": "Termal kamera ve I-V curve tracer ile panel analizi.",
           "conditions": "Arıza tespit raporu sunulur.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_verimlilik_testi.png"
         },
         {
           "name": "Hibrit Solar Sistem Kurulumu",
@@ -1172,7 +1172,7 @@
           "unit": "sistem",
           "description": "Şebeke bağlantılı ve akü destekli kesintisiz enerji sistemi.",
           "conditions": "Otomatik transfer anahtarı (ATS) fiyata dahildir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_hibrit_sistem.png"
         },
         {
           "name": "Tarımsal Sulama Solar Paketi",
@@ -1180,7 +1180,7 @@
           "unit": "paket",
           "description": "Dalgıç pompa sürücüsü ve panel konstrüksiyonu kurulumu.",
           "conditions": "Pompa bedeli hariçtir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_tarimsal_sulama.png"
         },
         {
           "name": "Solar Otopark (Carport) Montajı",
@@ -1188,7 +1188,7 @@
           "unit": "araç",
           "description": "Çelik konstrüksiyonlu, üzeri panel kaplı otopark alanı.",
           "conditions": "Temel ankraj işleri dahildir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_otopark_carport.png"
         },
         {
           "name": "GES Periyodik Bakım (Yıllık)",
@@ -1196,7 +1196,7 @@
           "unit": "yıl",
           "description": "Yılda 2 kez genel kontrol, temizlik ve raporlama.",
           "conditions": "Yedek parça değişimi durumunda parça bedeli eklenir.",
-          "image_url": "images/services/solar_kurulum.png"
+          "image_url": "images/services/solar_ges_bakim.png"
         }
       ]
     },
@@ -1220,7 +1220,7 @@
           "unit": "set",
           "description": "Merkezi panel, hareket sensörleri ve siren.",
           "conditions": "Aylık merkez bağlantısı opsiyoneldir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_alarm.png"
         },
         {
           "name": "Yangın Algılama Sistemi",
@@ -1228,7 +1228,7 @@
           "unit": "set",
           "description": "Duman dedektörleri, buton ve yangın paneli.",
           "conditions": "İtfaiye onaylı proje dahildir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_yangin.png"
         },
         {
           "name": "Parmak İzi / Kartlı Geçiş",
@@ -1236,7 +1236,7 @@
           "unit": "kapı",
           "description": "Personel devam kontrol ve geçiş yetkilendirme sistemi.",
           "conditions": "Yazılım kurulumu ve ilk 10 kart dahildir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_gecis.png"
         },
         {
           "name": "Plaka Tanıma Sistemi",
@@ -1244,7 +1244,7 @@
           "unit": "set",
           "description": "Otopark girişi için yüksek çözünürlüklü PTS kamerası ve yazılım.",
           "conditions": "Bariyer bağlantısı dahildir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_plaka_tanima.png"
         },
         {
           "name": "Kablosuz Ev Güvenlik Paketi",
@@ -1252,7 +1252,7 @@
           "unit": "paket",
           "description": "Kablo kirliliği olmadan çalışan akıllı sensör ve siren seti.",
           "conditions": "Mobil uygulama üzerinden takip dahildir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_kablosuz_ev.png"
         },
         {
           "name": "Görüntülü Diafon Sistemi",
@@ -1260,7 +1260,7 @@
           "unit": "daire",
           "description": "7 inç monitörlü, gece görüşlü zil paneli dahil sistem.",
           "conditions": "Bina içi hazır tesisat varsa geçerli fiyattır.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_diafon.png"
         },
         {
           "name": "Mağaza Ürün Koruma Sistemi",
@@ -1268,7 +1268,7 @@
           "unit": "set",
           "description": "Giriş antenleri ve 500 adet alarm etiketi/çözücü.",
           "conditions": "Montaj ve kalibrasyon dahildir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_magaza_koruma.png"
         },
         {
           "name": "X-Ray Cihazı Kurulumu",
@@ -1276,7 +1276,7 @@
           "unit": "adet",
           "description": "Bagaj ve paket tarama cihazı kurulum/eğitim hizmeti.",
           "conditions": "Cihaz nakliyesi ve TAEK raporu hariçtir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_xray.png"
         },
         {
           "name": "Akıllı Kilit Sistemi",
@@ -1284,7 +1284,7 @@
           "unit": "kapı",
           "description": "Bluetooth/Wi-Fi destekli, anahtarsız giriş sistemi.",
           "conditions": "Mevcut kapı mekanizması uygunluğu kontrol edilmelidir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_akilli_kilit.png"
         },
         {
           "name": "Güvenlik Yazılım Güncelleme",
@@ -1292,7 +1292,7 @@
           "unit": "seans",
           "description": "Kayıt cihazı Firmware güncelleme ve disk sağlığı kontrolü.",
           "conditions": "Yedekleme hizmeti dahildir.",
-          "image_url": "images/services/kamera_kurulum.png"
+          "image_url": "images/services/guvenlik_yazilim_guncelleme.png"
         }
       ]
     },
@@ -1316,7 +1316,7 @@
           "unit": "m",
           "description": "Robotik fırça ile kanal içi temizlik.",
           "conditions": "Minimum 20 metre çalışma gereklidir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_kanal_temizligi.png"
         },
         {
           "name": "VRF / VRV Ünite Montajı",
@@ -1324,7 +1324,7 @@
           "unit": "adet",
           "description": "Merkezi klima sistemi iç veya dış ünite montajı.",
           "conditions": "Bakır boru hattı ayrıca hesaplanır.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_vrf_unite.png"
         },
         {
           "name": "Isı Pompası Kurulumu",
@@ -1332,7 +1332,7 @@
           "unit": "adet",
           "description": "Hava kaynaklı ısı pompası montajı ve tesisat bağlantısı.",
           "conditions": "Elektrik besleme hattı hariçtir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_isi_pompasi.png"
         },
         {
           "name": "Merkezi Sistem Filtre Değişimi",
@@ -1340,7 +1340,7 @@
           "unit": "adet",
           "description": "Klima santrali (AKS) torba ve panel filtre değişimi.",
           "conditions": "Filtre bedeli dahildir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_merkezi_filtre.png"
         },
         {
           "name": "Soğuk Oda Paneli Kurulumu",
@@ -1348,7 +1348,7 @@
           "unit": "m²",
           "description": "Sandviç panel ile soğuk hava deposu yalıtımı.",
           "conditions": "Kapı ve zemin yalıtımı ayrıdır.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_soguk_oda.png"
         },
         {
           "name": "Isı Geri Kazanım Ünitesi",
@@ -1356,7 +1356,7 @@
           "unit": "adet",
           "description": "Taze hava ve egzoz havası arasında ısı transferi sağlayan ünite kurulumu.",
           "conditions": "Kanal bağlantıları ayrıca hesaplanır.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_isi_geri_kazanim.png"
         },
         {
           "name": "Endüstriyel Mutfak Havalandırma",
@@ -1364,7 +1364,7 @@
           "unit": "set",
           "description": "Davlumbaz, kanal hattı ve salyangoz fan kurulumu.",
           "conditions": "Filtre ve fan kapasitesi ihtiyaca göre belirlenir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_endustriyel_mutfak.png"
         },
         {
           "name": "Data Center Hassas Klima Bakımı",
@@ -1372,7 +1372,7 @@
           "unit": "adet",
           "description": "7/24 çalışan salon tipi hassas cihazların periyodik bakımı.",
           "conditions": "Sarf malzeme (nemlendirici silindir vb.) hariçtir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_datacenter_klima.png"
         },
         {
           "name": "Nem Alma / Nemlendirme Cihazı",
@@ -1380,7 +1380,7 @@
           "unit": "adet",
           "description": "Depo veya arşiv alanları için endüstriyel iklimlendirme cihazı kurulumu.",
           "conditions": "Drenaj hattı çekimi dahildir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_nem_cihazi.png"
         },
         {
           "name": "Hava Perdesi Montajı",
@@ -1388,7 +1388,7 @@
           "unit": "adet",
           "description": "Mağaza girişleri için enerji tasarrufu sağlayan hava perdesi kurulumu.",
           "conditions": "Elektrik bağlantısı dahildir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_hava_perdesi.png"
         },
         {
           "name": "Kanallı Tip Klima İç Ünite",
@@ -1396,7 +1396,7 @@
           "unit": "adet",
           "description": "Asma tavan arası gizli kanallı iç ünite montajı.",
           "conditions": "Menfez ve esnek kanal bağlantısı fiyata dahildir.",
-          "image_url": "images/services/klima_bakim.png"
+          "image_url": "images/services/hvac_kanalli_klima.png"
         }
       ]
     },

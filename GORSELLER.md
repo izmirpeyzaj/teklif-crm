@@ -1,8 +1,7 @@
 # Görsel Üretim Rehberi
 
-Sektör paketlerindeki **242 hizmetin 159 tanesinin görseli hazır**, 
-**83 tanesi üretilmeyi bekliyor.** Bu dosya, hangi görselin nereye hangi adla 
-konulacağını ve hangi istemle üretileceğini listeler.
+Sektör paketlerindeki **242 hizmetin 242 tanesinin görseli hazır**, 
+**0 eksik.** Bu dosya, referans istemleri ve üretim kurallarını listeler.
 
 ## Sistem nasıl çalışıyor
 
@@ -57,96 +56,10 @@ bu listenin de belirli aralıklarla güncellenmesi gerekiyor.
 
 ## Üretilecek görseller
 
-### 📢 Reklam ve Dijital Pazarlama — 3 görsel
+### 🖨️ Matbaa ve Promosyon — 7 görsel
 
 | Dosya adı | Hizmet | İstem (konu) |
 |---|---|---|
-| `reklam_ajansi_seo_icerik_stratejisi.png` | SEO İçerik Stratejisi | a keyword research and content calendar spread on a desk with a laptop |
-| `reklam_ajansi_acik_hava_ooh_reklamcilik.png` | Açık Hava (OOH) Reklamcılık | a large billboard advertisement on a city street at golden hour |
-| `reklam_ajansi_performans_pazarlamasi_auditi.png` | Performans Pazarlaması Auditi | an analytics dashboard showing advertising performance charts and ROI |
-
-### 🚚 Nakliyat ve Taşımacılık — 10 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `nakliyat_evden_eve_nakliyat_sehir_ici.png` | Evden Eve Nakliyat (Şehir İçi) | movers carrying wrapped furniture into a moving truck in front of an apartment |
-| `nakliyat_sehirler_arasi_nakliyat.png` | Şehirler Arası Nakliyat | a large covered moving truck on an intercity highway at sunrise |
-| `nakliyat_asansorlu_tasima_hizmeti.png` | Asansörlü Taşıma Hizmeti | an exterior furniture lift raising boxes to an upper floor balcony |
-| `nakliyat_ofis_ve_isyeri_tasima.png` | Ofis ve İşyeri Taşıma | labelled crates and disassembled office desks ready for relocation |
-| `nakliyat_ambalajlama_ve_paketleme.png` | Ambalajlama ve Paketleme | a mover wrapping a sofa in bubble wrap and stretch film |
-| `nakliyat_mobilya_demontaj_ve_montaj.png` | Mobilya Demontaj ve Montaj | a worker assembling a wardrobe with a power screwdriver |
-| `nakliyat_esya_depolama_aylik.png` | Eşya Depolama (Aylık) | a clean indoor storage warehouse with stacked labelled household crates |
-| `nakliyat_piyano_kasa_tasima.png` | Piyano / Kasa Taşıma | specialists moving an upright piano with straps and a dolly |
-| `nakliyat_parca_esya_tasima.png` | Parça Eşya Taşıma | a small van being loaded with a few wrapped furniture pieces |
-| `nakliyat_nakliye_sigortasi.png` | Nakliye Sigortası | an insurance document and pen on a desk beside packed moving boxes |
-
-### 🏊 Havuz Yapım ve Bakım — 10 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `havuz_betonarme_havuz_yapimi.png` | Betonarme Havuz Yapımı | a reinforced concrete swimming pool under construction with rebar and formwork |
-| `havuz_prefabrik_panel_havuz_kurulumu.png` | Prefabrik / Panel Havuz Kurulumu | workers assembling a prefabricated panel swimming pool in a garden |
-| `havuz_havuz_filtrasyon_sistemi.png` | Havuz Filtrasyon Sistemi | a pool pump room with sand filter, pump and valve manifold |
-| `havuz_havuz_su_isitma_isi_pompasi.png` | Havuz Su Isıtma (Isı Pompası) | a heat pump unit installed beside a swimming pool deck |
-| `havuz_sualti_aydinlatma_led.png` | Sualtı Aydınlatma (LED) | an illuminated swimming pool at night with underwater LED lights |
-| `havuz_havuz_kimyasal_bakimi_aylik.png` | Havuz Kimyasal Bakımı (Aylık) | a technician testing pool water chemistry with a test kit |
-| `havuz_havuz_genel_temizlik_ve_kisa_hazirlik.png` | Havuz Genel Temizlik ve Kışa Hazırlık | a worker brushing an empty pool and fitting a winter cover |
-| `havuz_liner_degisimi.png` | Liner Değişimi | installers fitting a new blue vinyl liner into a swimming pool |
-| `havuz_havuz_otomasyon_sistemi.png` | Havuz Otomasyon Sistemi | a pool automation control panel with digital dosing display |
-| `havuz_sus_havuzu_ve_selale_yapimi.png` | Süs Havuzu ve Şelale Yapımı | a decorative garden water feature with a stone waterfall |
-
-### 🪟 PVC Doğrama ve Cam Balkon — 10 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `dograma_pvc_pencere_imalat_ve_montaj.png` | PVC Pencere İmalat ve Montaj | installers fitting a white PVC double-glazed window into a wall opening |
-| `dograma_pvc_kapi_balkon_giris.png` | PVC Kapı (Balkon/Giriş) | a modern white PVC balcony door with handle, seen from inside |
-| `dograma_aluminyum_dograma.png` | Alüminyum Doğrama | slim dark aluminium window frames in a contemporary building facade |
-| `dograma_cam_balkon_katlanir_sistem.png` | Cam Balkon (Katlanır Sistem) | a folding glass balcony enclosure partially open with a sea view |
-| `dograma_isicamli_surme_sistem.png` | Isıcamlı Sürme Sistem | a large insulated sliding glass balcony system on a modern apartment |
-| `dograma_sineklik_pileli_menteseli.png` | Sineklik (Pileli / Menteşeli) | a pleated insect screen fitted to an open window |
-| `dograma_panjur_ve_stor_sistemleri.png` | Panjur ve Stor Sistemleri | exterior roller shutters half lowered on a residential window |
-| `dograma_dusakabin_imalati.png` | Duşakabin İmalatı | a frameless tempered glass shower enclosure in a modern bathroom |
-| `dograma_cam_ara_bolme_ofis_bolmesi.png` | Cam Ara Bölme / Ofis Bölmesi | a glass office partition wall with black frames in an open plan office |
-| `dograma_dograma_sokumu_ve_nakliye.png` | Doğrama Sökümü ve Nakliye | workers removing an old window frame from a building wall |
-
-### 🪑 Mobilya ve Mutfak İmalatı — 10 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `mobilya_mutfak_dolabi_imalati_membran.png` | Mutfak Dolabı İmalatı (Membran) | a modern fitted kitchen with membrane-finish cabinet doors |
-| `mobilya_mutfak_dolabi_lake.png` | Mutfak Dolabı (Lake) | a high-gloss lacquered kitchen cabinetry in a bright apartment |
-| `mobilya_gardirop_giyinme_odasi.png` | Gardırop / Giyinme Odası | a custom built-in wardrobe with organised shelving and hanging rails |
-| `mobilya_tezgah_cimstone_granit.png` | Tezgâh (Çimstone / Granit) | a quartz kitchen countertop being fitted with an undermount sink |
-| `mobilya_tv_unitesi_ve_duvar_paneli.png` | TV Ünitesi ve Duvar Paneli | a modern living room TV unit with a wooden decorative wall panel |
-| `mobilya_banyo_dolabi.png` | Banyo Dolabı | a moisture-resistant bathroom vanity cabinet with mirror |
-| `mobilya_ofis_mobilyasi_calisma_masasi.png` | Ofis Mobilyası (Çalışma Masası) | a custom wooden office desk with drawer pedestal in a bright workspace |
-| `mobilya_ahsap_merdiven_korkuluk.png` | Ahşap Merdiven / Korkuluk | a solid oak staircase with wooden handrail in a modern home |
-| `mobilya_mobilya_kaplama_yenileme.png` | Mobilya Kaplama / Yenileme | a craftsman applying new foil finish to an old cabinet door |
-| `mobilya_olcu_alma_ve_3d_tasarim.png` | Ölçü Alma ve 3D Tasarım | a designer measuring a kitchen wall with a laser meter beside a 3D render |
-
-### 📸 Fotoğraf ve Video Prodüksiyon — 10 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `fotograf_dugun_fotograf_ve_video_paketi.png` | Düğün Fotoğraf ve Video Paketi | a wedding photographer capturing a couple during the ceremony |
-| `fotograf_dis_cekim_save_the_date.png` | Dış Çekim (Save the Date) | an engaged couple posing for an outdoor photo shoot at golden hour |
-| `fotograf_nisan_kina_cekimi.png` | Nişan / Kına Çekimi | a photographer documenting a traditional Turkish henna night celebration |
-| `fotograf_drone_ile_havadan_cekim.png` | Drone ile Havadan Çekim | a camera drone hovering above an outdoor event venue |
-| `fotograf_urun_fotografi_e_ticaret.png` | Ürün Fotoğrafı (E-ticaret) | a product photography setup with softbox lights and a white sweep |
-| `fotograf_kurumsal_tanitim_filmi.png` | Kurumsal Tanıtım Filmi | a film crew shooting a corporate interview with a cinema camera |
-| `fotograf_etkinlik_kongre_cekimi.png` | Etkinlik / Kongre Çekimi | a photographer covering a conference presentation in a large hall |
-| `fotograf_fotograf_rotus_ve_renk_duzenleme.png` | Fotoğraf Rötuş ve Renk Düzenleme | a retoucher colour grading photographs on a calibrated monitor |
-| `fotograf_video_kurgu_ve_post_produksiyon.png` | Video Kurgu ve Post Prodüksiyon | a video editor working on a timeline in a dark editing suite |
-| `fotograf_album_ve_baski_hizmeti.png` | Albüm ve Baskı Hizmeti | an open premium wedding photo album on a table |
-
-### 🖨️ Matbaa ve Promosyon — 10 görsel
-
-| Dosya adı | Hizmet | İstem (konu) |
-|---|---|---|
-| `matbaa_kartvizit_baski_kuse.png` | Kartvizit Baskı (Kuşe) | a stack of freshly printed business cards on a printing press |
-| `matbaa_brosur_katalog_baski.png` | Broşür / Katalog Baskı | printed brochures and a bound catalogue fanned out on a table |
-| `matbaa_afis_ve_poster_baski.png` | Afiş ve Poster Baskı | a large format printer producing a colourful poster |
 | `matbaa_branda_vinil_baski.png` | Branda / Vinil Baskı | a printed vinyl banner with eyelets stretched on a frame |
 | `matbaa_tabela_imalati_kutu_harf.png` | Tabela İmalatı (Kutu Harf) | illuminated channel letter signage on a shop facade at night |
 | `matbaa_arac_giydirme.png` | Araç Giydirme | a van being wrapped with printed vinyl graphics in a workshop |
