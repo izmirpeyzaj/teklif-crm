@@ -137,7 +137,7 @@ async function sendReminderEmail(customerEmail, customerName, projectName, total
  * @param {string} [opts.senderName]  Gonderen isletmenin adi (cok kullanicili mod)
  * @param {string} [opts.replyTo]     Musterinin cevabinin gidecegi adres
  */
-async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName, senderName, replyTo, userId }) {
+async function sendProposalEmail({ to, customerName, projectName, message, pdfBuffer, fileName, senderName, replyTo, userId, approvalLink }) {
     const safeMessage = (message && message.trim())
         ? message.trim().replace(/\n/g, '<br>')
         : `${projectName ? '<strong>' + projectName + '</strong> projesi için ' : ''}hazırladığımız teklifimizi ekte PDF olarak iletiyoruz.`;
@@ -155,6 +155,20 @@ async function sendProposalEmail({ to, customerName, projectName, message, pdfBu
     const kendi = userId ? require('./user-mail').kullaniciTasiyicisi(userId) : null;
     const gonderenAdres = kendi ? kendi.gonderenAdres : MAIL_FROM;
 
+    const butonHtml = approvalLink ? `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 22px 18px; margin: 24px 0; text-align: center;">
+            <p style="margin: 0 0 14px 0; font-size: 15px; font-weight: 600; color: #0f172a;">
+                Teklifi dijital olarak inceleyip doğrudan onaylamak için:
+            </p>
+            <a href="${approvalLink}" style="background: #16a34a; color: #ffffff; padding: 13px 28px; text-decoration: none; border-radius: 7px; display: inline-block; font-weight: 700; font-size: 15px; box-shadow: 0 2px 6px rgba(22,163,74,0.25);">
+                Teklifi Görüntüle ve Onayla
+            </a>
+            <p style="margin: 14px 0 0 0; font-size: 12px; color: #64748b;">
+                Buton çalışmazsa adresi tarayıcınıza yapıştırabilirsiniz:<br>
+                <a href="${approvalLink}" style="color: #2563eb; word-break: break-all;">${approvalLink}</a>
+            </p>
+        </div>` : '';
+
     const mailOptions = {
         from: `"${displayName}" <${gonderenAdres}>`,
         // Kendi hesabindan giderken Reply-To gereksiz: zarfin adresi zaten onun.
@@ -162,12 +176,17 @@ async function sendProposalEmail({ to, customerName, projectName, message, pdfBu
         to,
         subject: `Teklifiniz${projectName ? ': ' + projectName : ''}`,
         html: `
-            <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                <h2>Sayın ${customerName || 'Yetkili'},</h2>
-                <p>${safeMessage}</p>
-                <p>İncelemeniz ve değerlendirmeniz için teşekkür ederiz. Her türlü sorunuz için bu e-postayı yanıtlayabilirsiniz.</p>
-                <br>
-                <p>İyi çalışmalar dileriz.</p>
+            <div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #1e293b; max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <h2 style="color: #0f172a; margin-top: 0; font-size: 20px;">Sayın ${customerName || 'Yetkili'},</h2>
+                <p style="font-size: 15px; line-height: 1.6; color: #334155;">${safeMessage}</p>
+                ${butonHtml}
+                <p style="font-size: 14px; line-height: 1.5; color: #64748b;">
+                    Teklif detayları ayrıca ekteki PDF belgesinde yer almaktadır. Her türlü sorunuz veya detay için bu e-postayı yanıtlayabilirsiniz.
+                </p>
+                <p style="margin-top: 24px; font-size: 14px; color: #334155;">
+                    İyi çalışmalar dileriz,<br>
+                    <strong>${displayName}</strong>
+                </p>
             </div>
         `,
         attachments: [

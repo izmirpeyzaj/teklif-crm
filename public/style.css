@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;600;700&display=swap');
+
 :root {
     /* Effix-Style Design System */
     --primary: #1e293b;
@@ -33,14 +35,13 @@
 }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: 'Inter', 'Noto Sans', 'DejaVu Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-main);
     background: var(--primary-bg);
     height: 100vh;
     overflow: hidden;
 }
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* APP LAYOUT - REFACTORED FOR SIDEBAR */
 .app-shell {

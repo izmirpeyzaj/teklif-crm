@@ -570,6 +570,7 @@ window.onayLinkiOlustur = async function (btn) {
                 proposalCode: kod,
                 customerName: state.customerName,
                 projectName: state.projectName || '',
+                total: parseFloat(String((document.getElementById('grandTotal') || {}).textContent || '0').replace(/[^\d,-]/g, '').replace(',', '.')) || 0,
                 total: parseFloat(String(document.getElementById('grandTotal').textContent).replace(/[^\d,-]/g, '').replace(',', '.')) || 0,
                 html
             })

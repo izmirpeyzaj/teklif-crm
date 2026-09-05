@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const puppeteer = require('puppeteer');
 const { sendProposalEmail, isMailConfigured } = require('../services/mail');
 const gate = require('../gate');
@@ -39,9 +40,19 @@ function buildDocument(bodyHtml, origin) {
 <head>
     <meta charset="UTF-8">
     <base href="${origin}/">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style> html, body { margin: 0; padding: 0; background: #fff; } </style>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #fff;
+            font-family: 'Inter', 'Noto Sans', 'DejaVu Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+    </style>
 </head>
 <body>
     <div class="app-container">
@@ -386,12 +397,43 @@ function gonderimYaz(req, kod, eposta, durum, hata) {
 // POST /api/pdf/send -> render the PDF and email it to the customer as attachment.
 router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), async (req, res) => {
     try {
-        const { html, customerEmail, customerName, projectName, message, fileName, senderName, proposalCode } = req.body;
+        const { html, customerEmail, customerName, projectName, message, fileName, senderName, proposalCode, total } = req.body;
         if (!html) return res.status(400).json({ message: 'Teklif içeriği (html) gerekli' });
         if (!customerEmail) return res.status(400).json({ message: 'Müşteri e-posta adresi gerekli' });
 
         if (!isMailConfigured()) {
             return res.status(503).json({ message: 'E-posta gönderimi yapılandırılmamış. .env içine SMTP_USER ve SMTP_PASS ekleyin.' });
+        }
+
+        // Musteri icin dijital onay baglantisi olustur
+        let approvalLink = null;
+        if (proposalCode && html && req.user && req.user.org_id) {
+            try {
+                const gun = 30;
+                const token = crypto.randomBytes(32).toString('hex');
+                const now = Date.now();
+                const cleanHtml = html.replace(/<[^>]+\bdata-internal\b[^>]*>[\s\S]*?<\/[a-zA-Z]+>/g, '');
+                const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+                const linkOrigin = process.env.APP_ORIGIN || `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`;
+
+                db.transaction(() => {
+                    db.prepare(`UPDATE proposal_links SET revoked_at = ?
+                                WHERE org_id = ? AND proposal_code = ? AND revoked_at IS NULL AND decided_at IS NULL`)
+                      .run(now, req.user.org_id, String(proposalCode));
+
+                    db.prepare(`INSERT INTO proposal_links
+                        (token_hash, org_id, proposal_code, proposal_id, customer_name, project_name,
+                         total, html, created_by, created_at, expires_at, origin)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+                      .run(tokenHash, req.user.org_id, String(proposalCode), null,
+                           customerName || '', projectName || '', parseFloat(total) || 0, cleanHtml,
+                           req.user.id, now, now + gun * 24 * 60 * 60 * 1000, linkOrigin);
+                })();
+
+                approvalLink = linkOrigin.replace(/\/$/, '') + '/t/' + token;
+            } catch (linkErr) {
+                console.warn('Otomatik onay baglantisi olusturulamadi:', linkErr.message);
+            }
         }
 
         const pdf = await renderPdf(html, getOrigin(req), req.headers.cookie);
@@ -408,7 +450,8 @@ router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), a
             senderName: senderName || req.user.company_name || undefined,
             replyTo: req.user.email,
             // Kullanici kendi e-posta hesabini tanimladiysa gonderim ondan yapilir.
-            userId: req.user.id
+            userId: req.user.id,
+            approvalLink
         });
         } catch (mailErr) {
             // Basarisiz gonderim de kayda gecer. Aksi halde "yolladim saniyordum"
@@ -419,7 +462,7 @@ router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), a
 
         gonderimYaz(req, proposalCode, customerEmail, 'sent', null);
 
-        res.json({ message: `Teklif PDF olarak ${customerEmail} adresine gönderildi.` });
+        res.json({ message: `Teklif PDF ve onay bağlantısı olarak ${customerEmail} adresine gönderildi.` });
     } catch (err) {
         if (err.code === 'PDF_BUSY') {
             return res.status(503).json({ message: 'Sistem su anda yogun. Lutfen birkac saniye sonra tekrar deneyin.' });
