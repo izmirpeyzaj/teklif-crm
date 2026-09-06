@@ -473,3 +473,6 @@ router.post('/send', pdfLimiter, requireVerifiedEmail, quota.enforce('email'), a
 });
 
 module.exports = router;
+module.exports.renderPdf = renderPdf;
+module.exports.sanitizeFileName = sanitizeFileName;
+module.exports.safeContentDisposition = safeContentDisposition;

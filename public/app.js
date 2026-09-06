@@ -4522,25 +4522,71 @@ window.saveCurrentProposal = async function () {
     alert('Teklif kaydedildi: ' + code);
 };
 
-window.shareProposalWhatsApp = function () {
-    const total = document.getElementById('grandTotal').textContent;
+window.shareProposalWhatsApp = async function (btn) {
+    const total = (document.getElementById('grandTotal') || {}).textContent || '';
     let phoneNumber = '';
 
     // Find customer phone if selected
     if (state.customerName) {
-        const customer = state.customers.find(c => c.name === state.customerName);
+        const customer = (state.customers || []).find(c => c.name === state.customerName);
         if (customer && customer.phone) {
-            // Clean phone number: remove non-digits
             phoneNumber = customer.phone.replace(/\D/g, '');
-            // If starts with 0, remove it (for 905...)
             if (phoneNumber.startsWith('0')) phoneNumber = phoneNumber.substring(1);
-            // If doesn't start with 90, add it (assuming TR default)
             if (!phoneNumber.startsWith('90') && phoneNumber.length === 10) phoneNumber = '90' + phoneNumber;
         }
     }
 
-    const msg = `Merhaba, ${state.customerName} için hazırladığımız ${state.projectName} projesi teklifimiz hazır. \nToplam Tutar: ${total}\nDetayları incelemek için iletişime geçebilirsiniz.`;
-    const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(msg)}`;
+    // Auto-generate approval link if not present
+    let link = (typeof _sonOnayLinki !== 'undefined') ? _sonOnayLinki : null;
+    if (!link && typeof captureProposalHtml === 'function') {
+        const html = captureProposalHtml();
+        const kod = (els.propFullCode && els.propFullCode.textContent) || '';
+        if (html && state.customerName && kod) {
+            const originalText = btn ? btn.innerHTML : null;
+            try {
+                if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Hazırlanıyor...'; }
+                const r = await fetch('/api/links', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        proposalCode: kod,
+                        customerName: state.customerName,
+                        projectName: state.projectName || '',
+                        total: parseFloat(String(total).replace(/[^\d,-]/g, '').replace(',', '.')) || 0,
+                        html
+                    })
+                });
+                const j = await r.json().catch(() => ({}));
+                if (r.ok && j.link) {
+                    _sonOnayLinki = j.link;
+                    link = j.link;
+                    if (typeof onayLinkiniGoster === 'function') {
+                        onayLinkiniGoster(j.link, j.expiresInDays);
+                    }
+                }
+            } catch (e) {
+                console.warn('Otomatik link olusturulamadi:', e);
+            } finally {
+                if (btn) { btn.disabled = false; btn.innerHTML = originalText; }
+            }
+        }
+    }
+
+    let msg = 'Merhaba' + (state.customerName ? ' Sayın ' + state.customerName : '') + ',\n\n';
+    if (state.projectName) {
+        msg += state.projectName + ' projeniz için hazırladığımız teklifimiz hazırdır.\n';
+    } else {
+        msg += 'Hazırladığımız teklifimiz hazırdır.\n';
+    }
+    if (total) {
+        msg += '💰 Toplam Tutar: ' + total + '\n\n';
+    }
+    if (link) {
+        msg += '🔗 Teklifi dijital olarak incelemek ve onaylamak için tıklayınız:\n' + link + '\n\n';
+    }
+    msg += 'Detayları incelemek veya sorularınız için bizimle iletişime geçebilirsiniz.';
+
+    const url = 'https://wa.me/' + phoneNumber + '?text=' + encodeURIComponent(msg);
     window.open(url, '_blank');
 };
 
@@ -6260,16 +6306,73 @@ async function downloadProposalPdf(btn) {
 }
 window.downloadProposalPdf = downloadProposalPdf;
 
-// Render the proposal to PDF on the server and email it to the customer.
-async function sendProposalPdf(btn) {
+// ====================================
+// E-POSTA VE MODAL İLE TEKLİF GÖNDERİMİ
+// ====================================
+function openEmailProposalModal() {
     const html = captureProposalHtml();
     if (!html) { alert('Gönderilecek teklif bulunamadı.'); return; }
 
-    const customerEmail = prompt('Müşterinin e-posta adresi:', state.customerEmail || '');
-    if (!customerEmail) return;
+    const modal = document.getElementById('emailProposalModal');
+    if (!modal) {
+        return legacyPromptSendEmail();
+    }
 
-    const original = btn ? btn.innerHTML : null;
-    if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Gönderiliyor...'; }
+    const custName = state.customerName || '';
+    let custEmail = state.customerEmail || '';
+    if (!custEmail && custName) {
+        const found = (state.customers || []).find(c => c.name === custName);
+        if (found && found.email) custEmail = found.email;
+    }
+
+    const projName = state.projectName || '';
+    const propCode = (els.propFullCode && els.propFullCode.textContent) || '';
+    const total = (document.getElementById('grandTotal') || {}).textContent || '0,00 ₺';
+
+    const elCust = document.getElementById('emailModalCustomerName');
+    if (elCust) elCust.textContent = custName || 'Belirtilmedi';
+    const elProj = document.getElementById('emailModalProjectCode');
+    if (elProj) elProj.textContent = (projName ? projName + ' · ' : '') + (propCode || '—');
+    const elTot = document.getElementById('emailModalTotal');
+    if (elTot) elTot.textContent = total;
+    const elTo = document.getElementById('emailModalTo');
+    if (elTo) elTo.value = custEmail;
+    const elMsg = document.getElementById('emailModalMessage');
+    if (elMsg) elMsg.value = '';
+
+    modal.classList.remove('hidden');
+}
+window.openEmailProposalModal = openEmailProposalModal;
+
+function closeEmailProposalModal() {
+    const modal = document.getElementById('emailProposalModal');
+    if (modal) modal.classList.add('hidden');
+}
+window.closeEmailProposalModal = closeEmailProposalModal;
+
+async function confirmSendProposalEmail(btn) {
+    const html = captureProposalHtml();
+    if (!html) { alert('Gönderilecek teklif bulunamadı.'); return; }
+
+    const toInput = document.getElementById('emailModalTo');
+    const customerEmail = toInput ? toInput.value.trim() : '';
+    if (!customerEmail || !customerEmail.includes('@')) {
+        alert('Lütfen geçerli bir e-posta adresi girin.');
+        if (toInput) toInput.focus();
+        return;
+    }
+
+    const msgInput = document.getElementById('emailModalMessage');
+    const message = msgInput ? msgInput.value.trim() : '';
+
+    const propCode = (els.propFullCode && els.propFullCode.textContent) || '';
+    const total = parseFloat(String((document.getElementById('grandTotal') || {}).textContent || '0').replace(/[^\d,-]/g, '').replace(',', '.')) || 0;
+
+    const originalText = btn ? btn.innerHTML : null;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ PDF Hazırlanıyor & Gönderiliyor...';
+    }
 
     try {
         const res = await fetch('/api/pdf/send', {
@@ -6281,7 +6384,49 @@ async function sendProposalPdf(btn) {
                 customerName: state.customerName || '',
                 projectName: state.projectName || '',
                 fileName: proposalFileName(),
-                // Gonderim kaydinin hangi teklife ait oldugunu bilmesi icin.
+                proposalCode: propCode,
+                message,
+                total
+            })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
+
+        closeEmailProposalModal();
+        alert('✅ ' + (data.message || 'Teklif ve onay bağlantısı başarıyla gönderildi.'));
+    } catch (e) {
+        console.error('PDF send error:', e);
+        alert('Gönderilemedi: ' + e.message);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+}
+window.confirmSendProposalEmail = confirmSendProposalEmail;
+
+async function sendProposalPdf(btn) {
+    openEmailProposalModal();
+}
+window.sendProposalPdf = sendProposalPdf;
+
+async function legacyPromptSendEmail() {
+    const html = captureProposalHtml();
+    if (!html) { alert('Gönderilecek teklif bulunamadı.'); return; }
+    const customerEmail = prompt('Müşterinin e-posta adresi:', state.customerEmail || '');
+    if (!customerEmail) return;
+
+    try {
+        const res = await fetch('/api/pdf/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                html,
+                customerEmail,
+                customerName: state.customerName || '',
+                projectName: state.projectName || '',
+                fileName: proposalFileName(),
                 proposalCode: (els.propFullCode && els.propFullCode.textContent) || ''
             })
         });
@@ -6289,11 +6434,6 @@ async function sendProposalPdf(btn) {
         if (!res.ok) throw new Error(data.message || ('HTTP ' + res.status));
         alert('✅ ' + (data.message || 'Teklif gönderildi.'));
     } catch (e) {
-        console.error('PDF send error:', e);
         alert('Gönderilemedi: ' + e.message);
-    } finally {
-        if (btn) { btn.disabled = false; btn.innerHTML = original; }
     }
 }
-window.sendProposalPdf = sendProposalPdf;
-

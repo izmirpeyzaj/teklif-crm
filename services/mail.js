@@ -280,8 +280,63 @@ async function sendInviteEmail({ to, link, orgName, inviterName }) {
     });
 }
 
+/**
+ * Musteri teklifi onayladiginda veya reddettiginde teklifi hazirlayana anlik bildirim e-postasi.
+ */
+async function sendDecisionNotificationEmail({ to, customerName, projectName, proposalCode, total, decision, decisionNote, signerName }) {
+    const isAccepted = decision === 'accepted';
+    const title = isAccepted ? '🎉 Teklifiniz Onaylandı!' : 'Teklifiniz Reddedildi';
+    const subject = isAccepted
+        ? `🎉 Teklif Onaylandı: ${customerName || 'Müşteri'}${projectName ? ' - ' + projectName : ''}`
+        : `Teklif Reddedildi: ${customerName || 'Müşteri'}${projectName ? ' - ' + projectName : ''}`;
+
+    const formattedTotal = typeof total === 'number' && total > 0
+        ? total.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺'
+        : '';
+
+    const durumKutusu = isAccepted
+        ? `<div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:18px; margin:20px 0;">
+             <div style="font-weight:700; color:#166534; font-size:16px; margin-bottom:8px;">✓ Müşteri Teklifi Dijital Olarak İmzaladı ve Onayladı</div>
+             <p style="margin:4px 0; font-size:14px; color:#14532d;"><strong>İmzalayan:</strong> ${signerName || customerName || 'Yetkili'}</p>
+             ${decisionNote ? `<p style="margin:4px 0; font-size:14px; color:#14532d;"><strong>Müşteri Notu:</strong> ${decisionNote}</p>` : ''}
+           </div>`
+        : `<div style="background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:18px; margin:20px 0;">
+             <div style="font-weight:700; color:#991b1b; font-size:16px; margin-bottom:8px;">✕ Müşteri Teklifi Reddetti</div>
+             <p style="margin:4px 0; font-size:14px; color:#7f1d1d;"><strong>Karar Veren:</strong> ${signerName || customerName || 'Yetkili'}</p>
+             ${decisionNote ? `<p style="margin:4px 0; font-size:14px; color:#7f1d1d;"><strong>Ret Gerekçesi / Notu:</strong> ${decisionNote}</p>` : ''}
+           </div>`;
+
+    const htmlContent = `
+            <div style="font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 24px; color: #1e293b; max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 10px; border: 1px solid #e2e8f0;">
+                <h2 style="color: #0f172a; margin-top: 0; font-size: 20px;">${title}</h2>
+                <p style="font-size: 15px; line-height: 1.6; color: #334155;">
+                    <strong>${customerName || 'Müşteriniz'}</strong> için hazırlanan
+                    ${proposalCode ? `(Kod: <code>${proposalCode}</code>)` : ''}
+                    ${projectName ? `<strong>${projectName}</strong> projesi ` : ''}
+                    ${formattedTotal ? `ve <strong>${formattedTotal}</strong> tutarındaki ` : ''}teklif sonuçlandı:
+                </p>
+                ${durumKutusu}
+                <p style="font-size: 13px; color: #64748b; margin-top: 24px;">
+                    Teklif durumunu CRM panelinizden takip edebilir, iş sürecini hemen başlatabilirsiniz.
+                </p>
+            </div>
+        `;
+
+    if (!isMailConfigured()) {
+        return { skipped: true, to, subject, html: htmlContent };
+    }
+
+    return transporter.sendMail({
+        from: `"${process.env.MAIL_FROM_NAME || 'Teklif CRM'}" <${MAIL_FROM}>`,
+        to,
+        subject,
+        html: htmlContent
+    });
+}
+
 module.exports = {
     sendFeedbackEmail, sendReminderEmail, sendProposalEmail, isMailConfigured,
-    sendPasswordResetEmail, sendVerificationEmail, sendInviteEmail
+    sendPasswordResetEmail, sendVerificationEmail, sendInviteEmail, sendDecisionNotificationEmail
 };
+
 

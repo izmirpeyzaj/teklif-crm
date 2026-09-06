@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const db = require('../db_scripts/init');
 const { rateLimiter } = require('../services/rate-limit');
+const { sendDecisionNotificationEmail } = require('../services/mail');
 // Projede cookie-parser yok; oturum katmani kendi okuyucusunu kullaniyor.
 const { getCookie } = require('../services/session');
 
@@ -99,13 +100,30 @@ function onaySayfasi(b, token) {
     const kararVerildi = !!b.decided_at;
     const kabul = b.decision === 'accepted';
 
+    const now = Date.now();
+    const kalanGun = Math.max(0, Math.ceil((b.expires_at - now) / (24 * 3600 * 1000)));
+    const sonTarihStr = new Date(b.expires_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const sureRozeti = !kararVerildi ? `
+      <div style="display:inline-flex; align-items:center; gap:6px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; border-radius:20px; padding:5px 12px; font-size:.78rem; font-weight:600;">
+        <span>⏳</span>
+        <span>Geçerlilik: <strong>${kalanGun} gün kaldı</strong> (Son gün: ${sonTarihStr})</span>
+      </div>` : '';
+
     const durumKutusu = kararVerildi
         ? `<div style="background:${kabul ? '#dcfce7' : '#fee2e2'}; border:1px solid ${kabul ? '#86efac' : '#fecaca'}; border-radius:12px; padding:18px 20px; margin-bottom:18px;">
-             <div style="font-weight:700; color:${kabul ? '#15803d' : '#b91c1c'}; font-size:1rem;">
-               ${kabul ? '✓ Bu teklifi onayladınız' : '✕ Bu teklifi reddettiniz'}
-             </div>
-             <div style="font-size:.84rem; color:#475569; margin-top:6px;">
-               ${new Date(b.decided_at).toLocaleString('tr-TR')}${b.signer_name ? ' · ' + kacis(b.signer_name) : ''}
+             <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+               <div>
+                 <div style="font-weight:700; color:${kabul ? '#15803d' : '#b91c1c'}; font-size:1rem;">
+                   ${kabul ? '✓ Bu teklifi onayladınız' : '✕ Bu teklifi reddettiniz'}
+                 </div>
+                 <div style="font-size:.84rem; color:#475569; margin-top:6px;">
+                   ${new Date(b.decided_at).toLocaleString('tr-TR')}${b.signer_name ? ' · ' + kacis(b.signer_name) : ''}
+                 </div>
+               </div>
+               ${kabul ? `
+               <a href="/t/${token}/pdf" download style="display:inline-flex; align-items:center; gap:6px; background:#16a34a; color:#fff; padding:9px 16px; border-radius:8px; text-decoration:none; font-size:.85rem; font-weight:600; box-shadow:0 2px 6px rgba(22,163,74,.25);">
+                 📥 İmzalı Teklifi İndir (PDF)
+               </a>` : ''}
              </div>
              ${b.signature ? `<img src="${kacis(b.signature)}" alt="İmza" style="margin-top:12px; max-width:220px; background:#fff; border:1px solid #e2e8f0; border-radius:8px;">` : ''}
            </div>`
@@ -195,7 +213,11 @@ function onaySayfasi(b, token) {
       <div style="font-size:.76rem; color:#64748b; text-transform:uppercase; letter-spacing:.06em;">Teklif</div>
       <div style="font-weight:700; font-size:1.05rem;">${kacis(b.proposal_code)}</div>
     </div>
-    <button onclick="window.print()" style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 14px; font-size:.84rem; cursor:pointer;">🖨️ Yazdır / PDF</button>
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      ${sureRozeti}
+      <a href="/t/${token}/pdf" download style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 14px; font-size:.84rem; text-decoration:none; color:#1e293b; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">📥 PDF İndir</a>
+      <button onclick="window.print()" style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 14px; font-size:.84rem; cursor:pointer;">🖨️ Yazdır</button>
+    </div>
   </div>
 
   <div class="karar">${durumKutusu}</div>
@@ -355,10 +377,74 @@ router.post('/t/:token/karar', kararLimiti, express.json({ limit: '2mb' }), (req
         // pano karti yerinde kaliyor ve teklif kar raporuna girmiyordu.
           .run(decision === 'accepted' ? 'Kabul' : 'Red', Date.now(), b.org_id, b.proposal_code);
 
+        // Teklifi hazirlayana anlik e-posta bildirimi gonder
+        try {
+            const creator = db.prepare('SELECT email, display_name FROM users WHERE id = ?').get(b.created_by);
+            if (creator && creator.email) {
+                sendDecisionNotificationEmail({
+                    to: creator.email,
+                    customerName: b.customer_name,
+                    projectName: b.project_name,
+                    proposalCode: b.proposal_code,
+                    total: b.total,
+                    decision,
+                    decisionNote: note,
+                    signerName: ad
+                }).catch(err => console.warn('Karar bildirim e-postasi gonderilemedi:', err.message));
+            }
+        } catch (mailErr) {
+            console.warn('Karar bildirim kullanicisi alinamadi:', mailErr.message);
+        }
+
         res.json({ ok: true });
     } catch (err) {
         console.error('Karar kaydedilemedi:', err);
         res.status(500).json({ message: 'Kaydedilemedi.' });
+    }
+});
+
+// GET /t/:token/pdf — Musterinin veya firmanin teklifi (imzali) PDF olarak indirmesi
+router.get('/t/:token/pdf', rateLimiter({ windowMs: 10 * 60 * 1000, max: 30 }), async (req, res) => {
+    const b = baglantiBul(req.params.token);
+    if (!b || b.gecersiz) return res.status(404).type('text/plain').send('Bağlantı geçersiz veya süresi dolmuş.');
+
+    try {
+        const { renderPdf, safeContentDisposition, sanitizeFileName } = require('./pdf');
+        let htmlToRender = b.html;
+
+        // Eger onaylandiysa ve imza varsa sayfanin altina imza blogunu ekle
+        if (b.decision === 'accepted') {
+            const imzaBlok = `
+                <div style="margin-top:36px; padding:18px 24px; border:2px dashed #16a34a; border-radius:10px; background:#f0fdf4; page-break-inside:avoid; display:flex; justify-content:space-between; align-items:flex-end;">
+                    <div>
+                        <div style="font-size:12px; font-weight:700; color:#166534; text-transform:uppercase; letter-spacing:.05em; margin-bottom:4px;">✓ DİJİTAL OLARAK ONAYLANMIŞTIR</div>
+                        <div style="font-size:14px; font-weight:600; color:#0f172a;">${kacis(b.signer_name || b.customer_name)}</div>
+                        <div style="font-size:12px; color:#64748b; margin-top:2px;">Onay Tarihi: ${new Date(b.decided_at).toLocaleString('tr-TR')}</div>
+                        ${b.decision_note ? `<div style="font-size:12px; color:#475569; margin-top:4px; font-style:italic;">Not: ${kacis(b.decision_note)}</div>` : ''}
+                    </div>
+                    ${b.signature ? `<div><img src="${kacis(b.signature)}" style="max-height:70px; max-width:200px; display:block;" alt="İmza"></div>` : ''}
+                </div>
+            `;
+            if (htmlToRender.includes('</div>')) {
+                const sonIndex = htmlToRender.lastIndexOf('</div>');
+                htmlToRender = htmlToRender.slice(0, sonIndex) + imzaBlok + htmlToRender.slice(sonIndex);
+            } else {
+                htmlToRender += imzaBlok;
+            }
+        }
+
+        const origin = `${req.get('x-forwarded-proto') || req.protocol}://${req.get('host')}`;
+        const pdf = await renderPdf(htmlToRender, origin, `${LINK_COOKIE}=${req.params.token}`);
+
+        const dosyaAdi = `${b.proposal_code || 'teklif'}_${b.decision === 'accepted' ? 'onayli' : 'teklif'}`;
+        res.set({
+            'Content-Type': 'application/pdf',
+            'Content-Disposition': safeContentDisposition(dosyaAdi, 'inline')
+        });
+        res.send(pdf);
+    } catch (e) {
+        console.error('Musteri PDF uretim hatasi:', e);
+        res.status(500).type('text/plain').send('PDF oluşturulamadı: ' + e.message);
     }
 });
 
